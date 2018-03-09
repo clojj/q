@@ -1,0 +1,1 @@
+/opt/kafka_2.12-1.0.1/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic greetings --from-beginning
