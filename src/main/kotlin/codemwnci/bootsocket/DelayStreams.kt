@@ -7,7 +7,7 @@ import org.springframework.messaging.SubscribableChannel
 import org.springframework.stereotype.Component
 
 @Component
-interface GreetingsStreams {
+interface DelayStreams {
 
     @Input("greetings-in")
     fun inboundGreetings(): SubscribableChannel

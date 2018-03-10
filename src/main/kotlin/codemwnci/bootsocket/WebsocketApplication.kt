@@ -5,8 +5,12 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Configuration
-import org.springframework.web.socket.*
-import org.springframework.web.socket.config.annotation.*
+import org.springframework.web.socket.CloseStatus
+import org.springframework.web.socket.TextMessage
+import org.springframework.web.socket.WebSocketSession
+import org.springframework.web.socket.config.annotation.EnableWebSocket
+import org.springframework.web.socket.config.annotation.WebSocketConfigurer
+import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 import org.springframework.web.socket.handler.TextWebSocketHandler
 import java.util.concurrent.atomic.AtomicLong
 
@@ -15,7 +19,7 @@ class User(val id: Long, val name: String)
 
 class Message(val msgType: String, val data: Any)
 
-class ChatHandler(val greetingsService: GreetingsService) : TextWebSocketHandler() {
+class WebsocketHandler(val delayService: DelayService) : TextWebSocketHandler() {
 
     val sessionList = HashMap<WebSocketSession, User>()
     var uids = AtomicLong(0)
@@ -40,7 +44,7 @@ class ChatHandler(val greetingsService: GreetingsService) : TextWebSocketHandler
             }
             "say" -> {
                 broadcast(Message("say", text))
-                sendGreetings(text)
+                sendDelay(text)
             }
         }
     }
@@ -51,24 +55,25 @@ class ChatHandler(val greetingsService: GreetingsService) : TextWebSocketHandler
 
     fun broadcastToOthers(me: WebSocketSession, msg: Message) = sessionList.filterNot { it.key == me }.forEach { emit(it.key, msg) }
 
-    fun sendGreetings(msg: String) {
-        val greetings = Greetings(42, msg)
-        greetingsService.sendGreeting(greetings)
+    fun sendDelay(delayMillis: String) {
+        val interval = delayMillis.toLong()
+        val delay = Delay(interval, "Delay: $delayMillis", System.currentTimeMillis() + interval)
+        delayService.sendDelay(delay)
     }
 }
 
 @Configuration
 @EnableWebSocket
-class WSConfig(val greetingsService: GreetingsService) : WebSocketConfigurer {
+class WSConfig(val delayService: DelayService) : WebSocketConfigurer {
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
-        registry.addHandler(ChatHandler(greetingsService), "/chat").withSockJS()
+        registry.addHandler(WebsocketHandler(delayService), "/chat").withSockJS()
     }
 }
 
 
 @SpringBootApplication
-class ChatApplication
+class WebsocketApplication
 
 fun main(args: Array<String>) {
-    runApplication<ChatApplication>(*args)
+    runApplication<WebsocketApplication>(*args)
 }

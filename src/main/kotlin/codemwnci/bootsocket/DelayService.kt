@@ -6,15 +6,15 @@ import org.springframework.stereotype.Service
 import org.springframework.util.MimeTypeUtils
 
 @Service
-class GreetingsService(private val greetingsStreams: GreetingsStreams) {
+class DelayService(private val delayStreams: DelayStreams) {
 
-    fun sendGreeting(greetings: Greetings) {
+    fun sendDelay(delay: Delay) {
 
-        println("Sending greetings $greetings")
+        println("sending delay $delay")
 
-        val messageChannel = greetingsStreams.outboundGreetings()
+        val messageChannel = delayStreams.outboundGreetings()
         messageChannel.send(MessageBuilder
-                .withPayload(greetings)
+                .withPayload(delay)
                 .setHeader(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.APPLICATION_JSON)
                 .build())
     }
