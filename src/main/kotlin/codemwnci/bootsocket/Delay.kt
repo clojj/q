@@ -4,6 +4,7 @@ import java.util.concurrent.Delayed
 import java.util.concurrent.TimeUnit
 
 data class Delay(val timestamp: Long, val message: String, val now: Long) : Delayed {
+
     override fun compareTo(other: Delayed?): Int {
         val otherDelay = other as Delay
         if (now < otherDelay.now) {

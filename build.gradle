@@ -48,6 +48,9 @@ dependencies {
     compile('org.springframework.boot:spring-boot-starter-actuator')
     compile('org.springframework.cloud:spring-cloud-stream:2.0.0.M4')
     compile('org.springframework.cloud:spring-cloud-starter-stream-kafka:2.0.0.M4')
+
+    compile('org.mapdb:mapdb:3.0.5')
+
     compile("org.jetbrains.kotlin:kotlin-stdlib-jre8")
     compile("org.jetbrains.kotlin:kotlin-reflect")
     compile "com.fasterxml.jackson.module:jackson-module-kotlin:2.9.0"

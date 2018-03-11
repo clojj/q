@@ -44,7 +44,7 @@ class WebsocketHandler(val delayService: DelayService) : TextWebSocketHandler() 
             }
             "say" -> {
                 broadcast(Message("say", text))
-                sendDelay(text)
+                sendDelay(text, session.toString())
             }
         }
     }
@@ -55,9 +55,9 @@ class WebsocketHandler(val delayService: DelayService) : TextWebSocketHandler() 
 
     fun broadcastToOthers(me: WebSocketSession, msg: Message) = sessionList.filterNot { it.key == me }.forEach { emit(it.key, msg) }
 
-    fun sendDelay(delayMillis: String) {
+    fun sendDelay(delayMillis: String, session: String) {
         val interval = delayMillis.toLong()
-        val delay = Delay(interval, "Delay: $delayMillis", System.currentTimeMillis() + interval)
+        val delay = Delay(interval, "Delay from $session", System.currentTimeMillis() + interval)
         delayService.sendDelay(delay)
     }
 }
