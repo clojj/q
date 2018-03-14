@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
 import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
@@ -76,4 +78,16 @@ class WebsocketApplication
 
 fun main(args: Array<String>) {
     runApplication<WebsocketApplication>(*args)
+}
+
+@Configuration
+class ThreadPoolTaskSchedulerConfig {
+
+    @Bean
+    fun threadPoolTaskScheduler(): ThreadPoolTaskScheduler {
+        val threadPoolTaskScheduler = ThreadPoolTaskScheduler()
+        threadPoolTaskScheduler.poolSize = 5
+        threadPoolTaskScheduler.threadNamePrefix = "ThreadPoolTaskScheduler"
+        return threadPoolTaskScheduler
+    }
 }

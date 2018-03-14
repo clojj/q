@@ -4,45 +4,39 @@ import jetbrains.exodus.ArrayByteIterable
 import jetbrains.exodus.bindings.StringBinding
 import jetbrains.exodus.env.Environments
 import jetbrains.exodus.env.StoreConfig
-import jetbrains.exodus.env.Transaction
-import jetbrains.exodus.env.TransactionalExecutable
-import org.jetbrains.annotations.NotNull
 import org.springframework.cloud.stream.annotation.StreamListener
 import org.springframework.messaging.handler.annotation.Headers
 import org.springframework.messaging.handler.annotation.Payload
+import org.springframework.scheduling.TaskScheduler
 import org.springframework.stereotype.Component
 import org.springframework.util.SerializationUtils
-import java.util.concurrent.DelayQueue
+import java.time.Instant
 import java.util.concurrent.TimeUnit
-import javax.annotation.PostConstruct
 
 
 @Component
-class DelayListener {
-
-    private val delayQueue = DelayQueue<Delay>()
-
-    @PostConstruct
-    fun init() {
-        Thread(Runnable {
-            while (true) {
-                val delay = delayQueue.take()
-                println("Delay expired: $delay")
-            }
-        }).start()
-    }
+class DelayListener(private val threadPoolTaskScheduler: TaskScheduler) {
 
     @StreamListener("greetings-in")
     fun handleDelay(@Payload delay: Delay, @Headers headers: Map<*, *>) {
         println("headers = $headers")
-        if (delay.getDelay(TimeUnit.MILLISECONDS) > 0) {
-            println("queuing delay: $delay at ${System.currentTimeMillis()}")
-            delayQueue.add(delay)
+        val delayMillis = delay.getDelay(TimeUnit.MILLISECONDS)
+        if (delayMillis > 0) {
+
+            println("scheduling delay: $delay at ${System.currentTimeMillis()}")
+            threadPoolTaskScheduler.schedule({
+                println("${Thread.currentThread().name}: delay expired: $delay")
+            }, Instant.ofEpochMilli(System.currentTimeMillis() + delayMillis))
 
             // update store
-            val env = Environments.newInstance(".myAppData")
+            val env = Environments.newInstance(".qstore")
             env.executeInTransaction { txn ->
                 val store = env.openStore("Messages", StoreConfig.WITHOUT_DUPLICATES, txn)
+
+                val getbytes = store.get(txn, StringBinding.stringToEntry("Delay"))
+                val existingDelay = SerializationUtils.deserialize(getbytes?.bytesUnsafe) as Delay
+                println("existingDelay = $existingDelay")
+
                 val bytes = SerializationUtils.serialize(delay)
                 store.put(txn, StringBinding.stringToEntry("Delay"), ArrayByteIterable(bytes))
             }
