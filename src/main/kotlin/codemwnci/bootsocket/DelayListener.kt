@@ -1,7 +1,12 @@
 package codemwnci.bootsocket
 
-import org.mapdb.DBMaker
-import org.mapdb.Serializer
+import jetbrains.exodus.ArrayByteIterable
+import jetbrains.exodus.bindings.StringBinding
+import jetbrains.exodus.env.Environments
+import jetbrains.exodus.env.StoreConfig
+import jetbrains.exodus.env.Transaction
+import jetbrains.exodus.env.TransactionalExecutable
+import org.jetbrains.annotations.NotNull
 import org.springframework.cloud.stream.annotation.StreamListener
 import org.springframework.messaging.handler.annotation.Headers
 import org.springframework.messaging.handler.annotation.Payload
@@ -11,26 +16,14 @@ import java.util.concurrent.DelayQueue
 import java.util.concurrent.TimeUnit
 import javax.annotation.PostConstruct
 
+
 @Component
 class DelayListener {
 
     private val delayQueue = DelayQueue<Delay>()
 
-    private final val db = DBMaker.fileDB("mapStore")
-            .transactionEnable()
-            .fileMmapEnable()
-            .closeOnJvmShutdown()
-            .make()
-    private final val treeMap = db.treeMap("treeMap", Serializer.STRING, Serializer.BYTE_ARRAY)
-            .createOrOpen()
-
     @PostConstruct
     fun init() {
-        if (treeMap["TODO"] == null) {
-            treeMap["TODO"] = SerializationUtils.serialize(mutableListOf(Delay(0, "", 0)))
-        }
-        treeMap.forEach({ k, v -> println("k = $k\nv = $v") })
-
         Thread(Runnable {
             while (true) {
                 val delay = delayQueue.take()
@@ -46,11 +39,14 @@ class DelayListener {
             println("queuing delay: $delay at ${System.currentTimeMillis()}")
             delayQueue.add(delay)
 
-            // update treeMap
-            val list = SerializationUtils.deserialize(treeMap["TODO"]) as MutableList<Delay>
-            list.add(delay)
-            treeMap["TODO"] = SerializationUtils.serialize(list)
-            db.commit()
+            // update store
+            val env = Environments.newInstance(".myAppData")
+            env.executeInTransaction { txn ->
+                val store = env.openStore("Messages", StoreConfig.WITHOUT_DUPLICATES, txn)
+                val bytes = SerializationUtils.serialize(delay)
+                store.put(txn, StringBinding.stringToEntry("Delay"), ArrayByteIterable(bytes))
+            }
+            env.close()
         }
     }
 }

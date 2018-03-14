@@ -49,11 +49,17 @@ dependencies {
     compile('org.springframework.cloud:spring-cloud-stream:2.0.0.M4')
     compile('org.springframework.cloud:spring-cloud-starter-stream-kafka:2.0.0.M4')
 
+/*
     compile('org.mapdb:mapdb:3.0.5')
-    compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.7'
+*/
 
     compile("org.jetbrains.kotlin:kotlin-stdlib-jre8")
     compile("org.jetbrains.kotlin:kotlin-reflect")
     compile "com.fasterxml.jackson.module:jackson-module-kotlin:2.9.0"
+
+    compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.7'
+    compile 'org.jetbrains.xodus:xodus-openAPI:1.2.2'
+    compile 'org.jetbrains.xodus:xodus-environment:1.2.2'
+
     testCompile('org.springframework.boot:spring-boot-starter-test')
 }
