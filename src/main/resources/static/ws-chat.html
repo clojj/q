@@ -59,7 +59,7 @@
         });
         function sendMessage(type, data) {
             if (data !== "") {
-                webSocket.send(JSON.stringify({type: type, data: data}));
+                webSocket.send(JSON.stringify({msgtype: type, data: data}));
                 $("#msg").val("");
                 $("#msg").focus();
             }

@@ -6,7 +6,7 @@ import Process
 import Task
 import Time
 import WebSocket.Explicit as WebSocket exposing (WebSocket)
-
+import Json.Encode exposing (encode, Value, string, int, float, bool, list, object)
 
 ---- MODEL ----
 
@@ -47,6 +47,33 @@ type Msg
     | WSSendingError String
 
 
+type alias Join =
+    { msgtype : String
+    , data : String
+    }
+
+joining : String -> String
+joining msg =
+    let json =
+        { msgtype = "join"
+        , data = msg
+        }
+    in
+        joinToJson json
+
+
+joinToJson : Join -> String
+joinToJson join =
+    encode 2 (encodeJoin join)
+
+encodeJoin : Join -> Value
+encodeJoin join =
+    object
+        [ ("msgtype", string join.msgtype)
+        , ("data", string join.data)
+        ]
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
@@ -60,7 +87,7 @@ update msg model =
             WSOpen (Ok ws) ->
                 ( { model | websocket = Just ws }
                     |> log "open" "success"
-                , WebSocket.send ws "join" WSSendingError
+                , WebSocket.send ws (joining "hello!") WSSendingError
                 )
 
             WSOpen (Err err) ->
