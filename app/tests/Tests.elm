@@ -16,6 +16,9 @@ all =
         , test "String.left" <|
             \_ ->
                 Expect.equal "a" (String.left 1 "abcdefg")
+        , test "String.right" <|
+            \_ ->
+                Expect.equal "fg" (String.right 2 "abcdefg")
         , test "This test should fail" <|
             \_ ->
                 Expect.fail "failed as expected!"
