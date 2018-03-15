@@ -7,20 +7,39 @@ import Task
 import Time
 import WebSocket.Explicit as WebSocket exposing (WebSocket)
 import Json.Encode exposing (encode, Value, string, int, float, bool, list, object)
+import Json.Decode exposing (Decoder, decodeString)
+import Json.Decode.Pipeline exposing (decode, required, optional, hardcoded)
+
 
 ---- MODEL ----
 
 
 type alias Model =
     { websocket : Maybe WebSocket
-    , events : List String
+    , users : List User
+    , useragent : String
     }
 
 
-init : ( Model, Cmd Msg )
-init =
+type alias User =
+    { name : String
+    }
+
+
+type alias WsMsg =
+    { msgType : String
+    , data : String
+    }
+
+type alias Flags =
+  { agent : String
+  }
+
+init : Flags -> ( Model, Cmd Msg )
+init { agent } =
     ( { websocket = Nothing
-      , events = []
+      , users = []
+      , useragent = agent
       }
     , connect
     )
@@ -48,16 +67,18 @@ type Msg
 
 
 type alias Join =
-    { msgtype : String
+    { msgType : String
     , data : String
     }
 
+
 joining : String -> String
 joining msg =
-    let json =
-        { msgtype = "join"
-        , data = msg
-        }
+    let
+        json =
+            { msgType = "join"
+            , data = msg
+            }
     in
         joinToJson json
 
@@ -66,43 +87,68 @@ joinToJson : Join -> String
 joinToJson join =
     encode 2 (encodeJoin join)
 
+
 encodeJoin : Join -> Value
 encodeJoin join =
     object
-        [ ("msgtype", string join.msgtype)
-        , ("data", string join.data)
+        [ ( "msgType", string join.msgType )
+        , ( "data", string join.data )
         ]
+
+
+userDecoder : Decoder User
+userDecoder =
+    decode User
+        |> required "name" Json.Decode.string
+
+
+wsMsgDecoder : Decoder WsMsg
+wsMsgDecoder =
+    decode WsMsg
+        |> required "msgType" Json.Decode.string
+        |> required "data" Json.Decode.string
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    let
-        log event details model =
-            { model | events = (event ++ ": " ++ details) :: model.events }
-    in
-        case msg of
-            Connect ->
-                ( model, connect )
+    case msg of
+        Connect ->
+            ( model, connect )
 
-            WSOpen (Ok ws) ->
-                ( { model | websocket = Just ws }
-                    |> log "open" "success"
-                , WebSocket.send ws (joining "hello!") WSSendingError
-                )
+        WSOpen (Ok ws) ->
+            ( { model | websocket = Just ws }
+            , WebSocket.send ws (joining model.useragent) WSSendingError -- TODO remove agent, input username !
+            )
 
-            WSOpen (Err err) ->
-                ( model |> log "open" err
-                , Task.perform (always Connect) <| Process.sleep (5 * Time.second)
-                )
+        WSOpen (Err err) ->
+            ( model
+            , Task.perform (always Connect) <| Process.sleep (5 * Time.second)
+            )
 
-            WSMessage msg ->
-                ( model |> log "reply" msg, Cmd.none )
+        WSMessage msg ->
+            -- TODO decode JSON
+            let
+                result =
+                    decodeString wsMsgDecoder msg
 
-            WSClose reason ->
-                ( { model | websocket = Nothing } |> log "close" reason, Cmd.none )
+                { msgType, data } =
+                    case result of
+                        Ok json ->
+                            json
 
-            WSSendingError err ->
-                ( model |> log "send" err, Cmd.none )
+                        Err err ->
+                            { msgType = "error", data = err }
+            in
+                if msgType == "join" then
+                    ( { model | users = { name = data } :: model.users }, Cmd.none )
+                else
+                    ( model, Cmd.none )
+
+        WSClose reason ->
+            ( { model | websocket = Nothing }, Cmd.none )
+
+        WSSendingError err ->
+            ( model, Cmd.none )
 
 
 
@@ -114,7 +160,7 @@ view model =
     div []
         [ h1 [] [ text "Schalttafel" ]
         , Html.ul []
-            (List.map (\event -> Html.li [] [ Html.text event ]) model.events)
+            (List.map (\user -> Html.li [] [ Html.text user.name ]) model.users)
         ]
 
 
@@ -122,9 +168,9 @@ view model =
 ---- PROGRAM ----
 
 
-main : Program Never Model Msg
+main : Program Flags Model Msg
 main =
-    Html.program
+    Html.programWithFlags
         { view = view
         , init = init
         , update = update

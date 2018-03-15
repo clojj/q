@@ -35,14 +35,14 @@ class WebsocketHandler(val delayService: DelayService) : TextWebSocketHandler() 
         val json = ObjectMapper().readTree(message?.payload)
         // {type: "join/say", data: "name/msg"}
         val text = json.get("data").asText()
-        when (json.get("msgtype").asText()) {
+        when (json.get("msgType").asText()) {
             "join" -> {
                 val user = User(uids.getAndIncrement(), text)
                 sessionList.put(session!!, user)
                 // tell this user about all other users
                 emit(session, Message("users", sessionList.values))
                 // tell all other users, about this user
-                broadcastToOthers(session, Message("join", user))
+                broadcastToOthers(session, Message("join", user.name))
             }
             "say" -> {
                 broadcast(Message("say", text))
