@@ -68,7 +68,7 @@ class WebsocketHandler(val delayService: DelayService) : TextWebSocketHandler() 
 @EnableWebSocket
 class WSConfig(val delayService: DelayService) : WebSocketConfigurer {
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
-        registry.addHandler(WebsocketHandler(delayService), "/chat").withSockJS()
+        registry.addHandler(WebsocketHandler(delayService), "/chat")
     }
 }
 
