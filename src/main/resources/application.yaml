@@ -1,3 +1,6 @@
+runwith:
+  kafka: true
+
 spring:
   cloud:
     stream:
