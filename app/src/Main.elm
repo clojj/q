@@ -1,7 +1,8 @@
 module Main exposing (..)
 
-import Html exposing (Html, text, div, h1, img)
-import Html.Attributes exposing (src)
+import Html exposing (Html, text, div, h1, img, input, button)
+import Html.Attributes exposing (src, placeholder, disabled)
+import Html.Events exposing (onInput, onClick)
 import Process
 import Task
 import Time
@@ -9,6 +10,8 @@ import WebSocket.Explicit as WebSocket exposing (WebSocket)
 import Json.Encode exposing (encode, Value, string, int, float, bool, list, object)
 import Json.Decode exposing (Decoder, decodeString)
 import Json.Decode.Pipeline exposing (decode, required, optional, hardcoded)
+import Maybe exposing (map)
+
 
 
 ---- MODEL ----
@@ -16,6 +19,7 @@ import Json.Decode.Pipeline exposing (decode, required, optional, hardcoded)
 
 type alias Model =
     { websocket : Maybe WebSocket
+    , name : String
     , users : List User
     , useragent : String
     }
@@ -38,6 +42,7 @@ type alias Flags =
 init : Flags -> ( Model, Cmd Msg )
 init { agent } =
     ( { websocket = Nothing
+      , name = ""
       , users = []
       , useragent = agent
       }
@@ -64,9 +69,11 @@ type Msg
     | WSMessage String
     | WSClose String
     | WSSendingError String
+    | InputName String
+    | Join
 
 
-type alias Join =
+type alias JoinMsg =
     { msgType : String
     , data : String
     }
@@ -83,13 +90,13 @@ joining msg =
         joinToJson json
 
 
-joinToJson : Join -> String
+joinToJson : JoinMsg -> String
 joinToJson join =
-    encode 2 (encodeJoin join)
+    encode 2 (encodeJoinMsg join)
 
 
-encodeJoin : Join -> Value
-encodeJoin join =
+encodeJoinMsg : JoinMsg -> Value
+encodeJoinMsg join =
     object
         [ ( "msgType", string join.msgType )
         , ( "data", string join.data )
@@ -112,6 +119,17 @@ wsMsgDecoder =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+
+        InputName s -> ( { model | name = s }, Cmd.none )
+
+        Join ->
+            let
+                result = map (\ws -> ( model, WebSocket.send ws (joining model.name) WSSendingError )) model.websocket
+            in
+                case result of
+                    Just r -> r
+                    Nothing -> ( model, Cmd.none )
+
         Connect ->
             ( model, connect )
 
@@ -126,7 +144,6 @@ update msg model =
             )
 
         WSMessage msg ->
-            -- TODO decode JSON
             let
                 result =
                     decodeString wsMsgDecoder msg
@@ -159,6 +176,8 @@ view : Model -> Html Msg
 view model =
     div []
         [ h1 [] [ text "Schalttafel" ]
+        , input [ placeholder "Name", onInput InputName, Html.Attributes.value model.name ] []
+        , button [ onClick Join, disabled (model.name == "") ] [ text "Login" ]
         , Html.ul []
             (List.map (\user -> Html.li [] [ Html.text user.name ]) model.users)
         ]
