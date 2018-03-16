@@ -29,11 +29,10 @@ type alias User =
     { name : String
     }
 
-
-type alias WsMsg =
-    { msgType : String
-    , data : String
-    }
+userDecoder : Decoder User
+userDecoder =
+    decode User
+        |> required "name" Json.Decode.string
 
 type alias Flags =
   { agent : String
@@ -73,44 +72,31 @@ type Msg
     | Join
 
 
-type alias JoinMsg =
+joining : String -> String
+joining name =
+    let
+        joinMsg =
+            { msgType = "join"
+            , data = name
+            }
+    in
+        encode 2 (encodeWsMsg joinMsg)
+
+
+type alias WsMsg =
     { msgType : String
     , data : String
     }
 
-
-joining : String -> String
-joining msg =
-    let
-        json =
-            { msgType = "join"
-            , data = msg
-            }
-    in
-        joinToJson json
-
-
-joinToJson : JoinMsg -> String
-joinToJson join =
-    encode 2 (encodeJoinMsg join)
-
-
-encodeJoinMsg : JoinMsg -> Value
-encodeJoinMsg join =
+encodeWsMsg : WsMsg -> Value
+encodeWsMsg wsMsg =
     object
-        [ ( "msgType", string join.msgType )
-        , ( "data", string join.data )
+        [ ( "msgType", string wsMsg.msgType )
+        , ( "data", string wsMsg.data )
         ]
 
-
-userDecoder : Decoder User
-userDecoder =
-    decode User
-        |> required "name" Json.Decode.string
-
-
-wsMsgDecoder : Decoder WsMsg
-wsMsgDecoder =
+decodeWsMsg : Decoder WsMsg
+decodeWsMsg =
     decode WsMsg
         |> required "msgType" Json.Decode.string
         |> required "data" Json.Decode.string
@@ -146,7 +132,7 @@ update msg model =
         WSMessage msg ->
             let
                 result =
-                    decodeString wsMsgDecoder msg
+                    decodeString decodeWsMsg msg
 
                 { msgType, data } =
                     case result of

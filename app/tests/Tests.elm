@@ -3,23 +3,24 @@ module Tests exposing (..)
 import Test exposing (..)
 import Expect
 
+import Json.Decode as Decode
+import Main exposing (WsMsg, decodeWsMsg, encodeWsMsg)
+import Fuzz exposing (Fuzzer)
 
 -- Check out http://package.elm-lang.org/packages/elm-community/elm-test/latest to learn more about testing in Elm!
+
+wsMsg : Fuzzer WsMsg
+wsMsg =
+  Fuzz.map2 WsMsg Fuzz.string Fuzz.string
 
 
 all : Test
 all =
     describe "A Test Suite"
-        [ test "Addition" <|
-            \_ ->
-                Expect.equal 10 (3 + 7)
-        , test "String.left" <|
-            \_ ->
-                Expect.equal "a" (String.left 1 "abcdefg")
-        , test "String.right" <|
-            \_ ->
-                Expect.equal "fg" (String.right 2 "abcdefg")
-        , test "This test should fail" <|
-            \_ ->
-                Expect.fail "failed as expected!"
+        [ fuzz wsMsg "round trip" <|
+            \msg ->
+                msg
+                    |> encodeWsMsg
+                    |> Decode.decodeValue decodeWsMsg
+                    |> Expect.equal (Ok msg)
         ]
