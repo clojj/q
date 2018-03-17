@@ -1,5 +1,11 @@
+schalter:
+  items:
+    - name: dev1
+    - name: dev2
+    - name: dev3
+
 runwith:
-  kafka: true
+  kafka: false
 
 spring:
   cloud:

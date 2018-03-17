@@ -9,6 +9,7 @@ import Json.Decode exposing (Decoder, decodeString)
 import Json.Decode.Pipeline exposing (decode, required, optional, hardcoded)
 import Maybe exposing (map)
 import WebSocket as WS
+import Http
 
 
 ---- MODEL ----
@@ -18,7 +19,39 @@ type alias Model =
     { error : Maybe String
     , name : String
     , users : Set String
+    , items : List Item
     }
+
+
+type alias Items =
+    { items : List Item
+    }
+
+
+type alias Item =
+    { item : String
+    , name : String
+    }
+
+
+itemsDecoder : Decoder Items
+itemsDecoder =
+    decode Items
+        |> required "items" (Json.Decode.list itemDecoder)
+
+
+itemDecoder : Decoder Item
+itemDecoder =
+    decode Item
+        |> required "item" Json.Decode.string
+        |> required "name" Json.Decode.string
+
+
+type Msg
+    = WsMessageIn String
+    | InputName String
+    | Join
+    | AllItems (Result Http.Error Items)
 
 
 type alias User =
@@ -46,24 +79,27 @@ wsMessageOut msg =
     WS.send wsURL msg
 
 
+fetchItems : Cmd Msg
+fetchItems =
+    Http.send AllItems <|
+        Http.get "http://localhost:8080/items" itemsDecoder
+
+
 init : Flags -> ( Model, Cmd Msg )
 init _ =
     ( { error = Nothing
       , name = ""
       , users = empty
+      , items = []
       }
-    , wsMessageOut (joining "newly joined")
+-- TODO do both
+--    , wsMessageOut (joining "newly joined") 
+    , fetchItems
     )
 
 
 
 ---- UPDATE ----
-
-
-type Msg
-    = WsMessageIn String
-    | InputName String
-    | Join
 
 
 joining : String -> String
@@ -101,6 +137,12 @@ decodeWsMsg =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        AllItems (Ok is) ->
+            ( { model | items = is.items }, Cmd.none )
+
+        AllItems (Err _) ->
+            ( { model | error = Just "Error getting items" }, Cmd.none )
+
         InputName s ->
             ( { model | name = s }, Cmd.none )
 
@@ -153,8 +195,9 @@ view model =
             ]
         , input [ placeholder "Name", onInput InputName, Html.Attributes.value model.name ] []
         , button [ onClick Join, disabled (model.name == "") ] [ text "Login" ]
-        , h1 []
-            [ text "Benutzer" ]
+        , h1 [] [ text "Items" ]
+        , Html.div [] (List.map (\item -> Html.div [] [ Html.text item.item ]) model.items)
+        , h1 [] [ text "Benutzer" ]
         , Html.div [] (List.map (\name -> Html.div [] [ Html.text name ]) (toList model.users))
         ]
 
