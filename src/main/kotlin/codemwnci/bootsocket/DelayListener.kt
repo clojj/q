@@ -4,6 +4,7 @@ import jetbrains.exodus.ArrayByteIterable
 import jetbrains.exodus.bindings.StringBinding
 import jetbrains.exodus.env.Environments
 import jetbrains.exodus.env.StoreConfig
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.cloud.stream.annotation.StreamListener
 import org.springframework.messaging.handler.annotation.Headers
 import org.springframework.messaging.handler.annotation.Payload
@@ -12,10 +13,17 @@ import org.springframework.stereotype.Component
 import org.springframework.util.SerializationUtils
 import java.time.Instant
 import java.util.concurrent.TimeUnit
+import javax.annotation.PostConstruct
 
 
 @Component
+@ConditionalOnProperty(value = "runwith.kafka", matchIfMissing = false)
 class DelayListener(private val threadPoolTaskScheduler: TaskScheduler) {
+
+    @PostConstruct
+    fun init() {
+        println("DelayListener init")
+    }
 
     @StreamListener("greetings-in")
     fun handleDelay(@Payload delay: Delay, @Headers headers: Map<*, *>) {

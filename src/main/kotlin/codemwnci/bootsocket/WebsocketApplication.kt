@@ -24,7 +24,7 @@ class User(val id: Long, val name: String)
 
 class WsMsg(val msgType: String, val data: Any)
 
-class WebsocketHandler(private val delayService: DelayService) : TextWebSocketHandler() {
+class WebsocketHandler() : TextWebSocketHandler() {
 
     private val sessionList = HashMap<WebSocketSession, User>()
     private var uids = AtomicLong(0)
@@ -43,7 +43,9 @@ class WebsocketHandler(private val delayService: DelayService) : TextWebSocketHa
                 val user = User(uids.getAndIncrement(), text)
                 sessionList.put(session!!, user)
                 // tell this user about all other users
-                emit(session, WsMsg("users", sessionList.values))
+                if (text.equals("newly joined")) {
+                    sessionList.values.map { sessionUser -> emit(session, WsMsg("join", sessionUser.name)) }
+                }
                 // tell all other users, about this user
                 broadcastToOthers(session, WsMsg("join", user.name))
             }
@@ -63,15 +65,15 @@ class WebsocketHandler(private val delayService: DelayService) : TextWebSocketHa
     private fun sendDelay(delayMillis: String, session: String) {
         val interval = delayMillis.toLong()
         val delay = Delay(interval, "Delay from $session", System.currentTimeMillis() + interval)
-        delayService.sendDelay(delay)
+        // TODO
     }
 }
 
 @Configuration
 @EnableWebSocket
-class WSConfig(val delayService: DelayService) : WebSocketConfigurer {
+class WSConfig() : WebSocketConfigurer {
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
-        registry.addHandler(WebsocketHandler(delayService), "/chat")
+        registry.addHandler(WebsocketHandler(), "/chat")
     }
 }
 

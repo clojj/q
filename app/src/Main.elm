@@ -4,22 +4,18 @@ import Html exposing (Html, text, div, h1, h3, img, input, button)
 import Html.Attributes exposing (src, placeholder, disabled)
 import Html.Events exposing (onInput, onClick)
 import Set exposing (Set, empty, insert, toList)
-import Process
-import Task
-import Time
-import WebSocket.Explicit as WebSocket exposing (WebSocket)
 import Json.Encode exposing (encode, Value, string, int, float, bool, list, object)
 import Json.Decode exposing (Decoder, decodeString)
 import Json.Decode.Pipeline exposing (decode, required, optional, hardcoded)
 import Maybe exposing (map)
+import WebSocket as WS
 
 
 ---- MODEL ----
 
 
 type alias Model =
-    { websocket : Maybe WebSocket
-    , error : Maybe String
+    { error : Maybe String
     , name : String
     , users : Set String
     }
@@ -40,24 +36,24 @@ type alias Flags =
     {}
 
 
+wsURL : String
+wsURL =
+    "ws://localhost:8080/chat"
+
+
+wsMessageOut : String -> Cmd msg
+wsMessageOut msg =
+    WS.send wsURL msg
+
+
 init : Flags -> ( Model, Cmd Msg )
 init _ =
-    ( { websocket = Nothing
-      , error = Nothing
+    ( { error = Nothing
       , name = ""
       , users = empty
       }
-    , connect
+    , wsMessageOut (joining "newly joined")
     )
-
-
-connect : Cmd Msg
-connect =
-    WebSocket.open "ws://localhost:8080/chat"
-        { onOpen = WSOpen
-        , onMessage = WSMessage
-        , onClose = WSClose
-        }
 
 
 
@@ -65,11 +61,7 @@ connect =
 
 
 type Msg
-    = Connect
-    | WSOpen (Result String WebSocket)
-    | WSMessage String
-    | WSClose String
-    | WSSendingError String
+    = WsMessageIn String
     | InputName String
     | Join
 
@@ -113,27 +105,9 @@ update msg model =
             ( { model | name = s }, Cmd.none )
 
         Join ->
-            let
-                result =
-                    map (\ws -> ( model, WebSocket.send ws (joining model.name) WSSendingError )) model.websocket
-            in
-                case result of
-                    Just r ->
-                        r
+            ( model, wsMessageOut (joining model.name) )
 
-                    Nothing ->
-                        ( model, Cmd.none )
-
-        Connect ->
-            ( model, connect )
-
-        WSOpen (Ok ws) ->
-            ( { model | websocket = Just ws }, Cmd.none )
-
-        WSOpen (Err err) ->
-            ( model, Task.perform (always Connect) <| Process.sleep (1 * Time.second) )
-
-        WSMessage msg ->
+        WsMessageIn msg ->
             let
                 result =
                     decodeString decodeWsMsg msg
@@ -150,11 +124,14 @@ update msg model =
                     Err err ->
                         ( { model | error = Just err }, Cmd.none )
 
-        WSClose reason ->
-            ( { model | websocket = Nothing }, Cmd.none )
 
-        WSSendingError err ->
-            ( model, Cmd.none )
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    WS.listen wsURL WsMessageIn
 
 
 
@@ -166,10 +143,14 @@ view model =
     div []
         [ h1 [] [ text "Stellwerk" ]
         , h3 [] [ text "Fehler" ]
-        , Html.div [] [ case model.error of
-                            Just err -> text err
-                            Nothing -> text "Alles Ok"
-                      ]
+        , Html.div []
+            [ case model.error of
+                Just err ->
+                    text err
+
+                Nothing ->
+                    text "Alles Ok"
+            ]
         , input [ placeholder "Name", onInput InputName, Html.Attributes.value model.name ] []
         , button [ onClick Join, disabled (model.name == "") ] [ text "Login" ]
         , h1 []
@@ -188,5 +169,5 @@ main =
         { view = view
         , init = init
         , update = update
-        , subscriptions = always Sub.none
+        , subscriptions = subscriptions
         }
