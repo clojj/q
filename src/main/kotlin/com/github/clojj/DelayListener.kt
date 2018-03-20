@@ -1,4 +1,4 @@
-package codemwnci.bootsocket
+package com.github.clojj
 
 import jetbrains.exodus.ArrayByteIterable
 import jetbrains.exodus.bindings.StringBinding

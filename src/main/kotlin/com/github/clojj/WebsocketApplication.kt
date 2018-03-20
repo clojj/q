@@ -1,11 +1,8 @@
-package codemwnci.bootsocket
+package com.github.clojj
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -20,31 +17,40 @@ import org.springframework.web.socket.handler.TextWebSocketHandler
 import java.util.concurrent.atomic.AtomicLong
 
 
-class User(val id: Long, val name: String)
-
-class WsMsg(val msgType: String, val data: Any)
-
 class WebsocketHandler() : TextWebSocketHandler() {
 
-    private val sessionList = HashMap<WebSocketSession, User>()
+    private val sessionMap = HashMap<WebSocketSession, User>()
+
     private var uids = AtomicLong(0)
 
     @Throws(Exception::class)
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
-        sessionList -= session
+        sessionMap -= session
     }
 
     public override fun handleTextMessage(session: WebSocketSession?, message: TextMessage?) {
         val json = ObjectMapper().readTree(message?.payload)
-        // {msgType: "join", data: "name"}
-        val text = json.get("data").asText()
+        val data = json.get("data")
+        val text = data.asText()
         when (json.get("msgType").asText()) {
+            "set" -> {
+                val itemAndName = ItemAndName(data.get("item").asText(), data.get("name").asText())
+
+                if (sessionMap[session] == null) {
+                    val user = User(itemAndName.name)
+                    sessionMap[session!!] = user
+                }
+
+                broadcast(WsMsg("set", itemAndName))
+            }
+
+//            TODO remove these ?
             "join" -> {
-                val user = User(uids.getAndIncrement(), text)
-                sessionList.put(session!!, user)
+                val user = User(text)
+                sessionMap[session!!] = user
                 // tell this user about all other users
-                if (text.equals("newly joined")) {
-                    sessionList.values.map { sessionUser -> emit(session, WsMsg("join", sessionUser.name)) }
+                if (text == "newly joined") {
+                    sessionMap.values.map { sessionUser -> emit(session, WsMsg("join", sessionUser.name)) }
                 }
                 // tell all other users, about this user
                 broadcastToOthers(session, WsMsg("join", user.name))
@@ -58,15 +64,16 @@ class WebsocketHandler() : TextWebSocketHandler() {
 
     private fun emit(session: WebSocketSession, msg: WsMsg) = session.sendMessage(TextMessage(jacksonObjectMapper().writeValueAsString(msg)))
 
-    private fun broadcast(msg: WsMsg) = sessionList.forEach { emit(it.key, msg) }
+    private fun broadcast(msg: WsMsg) = sessionMap.forEach { emit(it.key, msg) }
 
-    private fun broadcastToOthers(me: WebSocketSession, msg: WsMsg) = sessionList.filterNot { it.key == me }.forEach { emit(it.key, msg) }
+    private fun broadcastToOthers(me: WebSocketSession, msg: WsMsg) = sessionMap.filterNot { it.key == me }.forEach { emit(it.key, msg) }
 
     private fun sendDelay(delayMillis: String, session: String) {
         val interval = delayMillis.toLong()
         val delay = Delay(interval, "Delay from $session", System.currentTimeMillis() + interval)
         // TODO
     }
+
 }
 
 @Configuration
@@ -76,7 +83,6 @@ class WSConfig() : WebSocketConfigurer {
         registry.addHandler(WebsocketHandler(), "/chat")
     }
 }
-
 
 @SpringBootApplication
 class WebsocketApplication

@@ -1,4 +1,4 @@
-package codemwnci.bootsocket
+package com.github.clojj
 
 import jetbrains.exodus.bindings.StringBinding
 import jetbrains.exodus.env.Environments
@@ -6,6 +6,7 @@ import jetbrains.exodus.env.Store
 import jetbrains.exodus.env.StoreConfig
 import jetbrains.exodus.env.Transaction
 import org.jetbrains.annotations.NotNull
+import org.springframework.beans.factory.DisposableBean
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Configuration
 import org.springframework.stereotype.Component
@@ -17,10 +18,10 @@ import javax.annotation.PreDestroy
 @ConfigurationProperties(prefix = "schalter")
 @Configuration
 class SchalterConfig {
-    var items: MutableList<Item> = mutableListOf()
+    var configItems: MutableList<ConfigItem> = mutableListOf()
 }
 
-class Item {
+class ConfigItem {
     lateinit var name: String
 
     override fun toString(): String {
@@ -35,20 +36,15 @@ class Storage(private var config: SchalterConfig) {
 
     @PostConstruct
     fun init() {
-        println("config = $config")
+        println("schalter configuration: $config")
 
         // initialize the store
         env.executeInTransaction { txn ->
             val store = env.openStore("Schalter", StoreConfig.WITHOUT_DUPLICATES, txn)
-            config.items.forEach { item: Item ->
-                initKey(store, txn, item.name)
+            config.configItems.forEach { configItem: ConfigItem ->
+                initKey(store, txn, configItem.name)
             }
         }
-    }
-
-    @PreDestroy
-    fun destroy() {
-        env.close() // TODO
     }
 
     private fun initKey(store: @NotNull Store, txn: @NotNull Transaction, key: String) {
@@ -60,7 +56,7 @@ class Storage(private var config: SchalterConfig) {
     }
 
     fun allItems(): List<ItemAndName> {
-        val items: MutableList<codemwnci.bootsocket.ItemAndName> = mutableListOf()
+        val items: MutableList<ItemAndName> = mutableListOf()
         env.executeInTransaction { txn ->
             val store = env.openStore("Schalter", StoreConfig.WITHOUT_DUPLICATES, txn)
             store.openCursor(txn).use { cursor ->
@@ -70,6 +66,11 @@ class Storage(private var config: SchalterConfig) {
             }
         }
         return items
+    }
+
+    // TODO
+    fun shutdown() {
+        env.close()
     }
 
 }

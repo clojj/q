@@ -1,5 +1,5 @@
 schalter:
-  items:
+  configItems:
     - name: dev1
     - name: dev2
     - name: dev3
