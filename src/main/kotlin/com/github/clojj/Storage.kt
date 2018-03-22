@@ -6,13 +6,12 @@ import jetbrains.exodus.env.Store
 import jetbrains.exodus.env.StoreConfig
 import jetbrains.exodus.env.Transaction
 import org.jetbrains.annotations.NotNull
-import org.springframework.beans.factory.DisposableBean
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Configuration
 import org.springframework.stereotype.Component
-import org.springframework.util.SerializationUtils
 import javax.annotation.PostConstruct
-import javax.annotation.PreDestroy
+import javax.servlet.ServletContextEvent
+import javax.servlet.ServletContextListener
 
 
 @ConfigurationProperties(prefix = "schalter")
@@ -30,7 +29,14 @@ class ConfigItem {
 }
 
 @Component
-class Storage(private var config: SchalterConfig) {
+class Storage(private var config: SchalterConfig) : ServletContextListener {
+
+    override fun contextInitialized(sce: ServletContextEvent?) {
+    }
+
+    override fun contextDestroyed(sce: ServletContextEvent?) {
+        env.close()
+    }
 
     val env = Environments.newInstance(".store")
 
@@ -44,11 +50,12 @@ class Storage(private var config: SchalterConfig) {
             config.configItems.forEach { configItem: ConfigItem ->
                 initKey(store, txn, configItem.name)
             }
+            txn.commit()
         }
     }
 
     private fun initKey(store: @NotNull Store, txn: @NotNull Transaction, key: String) {
-        val value = SerializationUtils.deserialize(store.get(txn, StringBinding.stringToEntry(key))?.bytesUnsafe)
+        val value = store.get(txn, StringBinding.stringToEntry(key))
         println("key:value = $key:$value")
         if (value == null) {
             store.put(txn, StringBinding.stringToEntry(key), StringBinding.stringToEntry("EMPTY"))
@@ -66,11 +73,6 @@ class Storage(private var config: SchalterConfig) {
             }
         }
         return items
-    }
-
-    // TODO
-    fun shutdown() {
-        env.close()
     }
 
 }

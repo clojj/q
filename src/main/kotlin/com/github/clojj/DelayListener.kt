@@ -15,7 +15,9 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 import javax.annotation.PostConstruct
 
-
+/*
+  Missing Kafka configuration see rev de532e1
+ */
 @Component
 @ConditionalOnProperty(value = "runwith.kafka", matchIfMissing = false)
 class DelayListener(private val threadPoolTaskScheduler: TaskScheduler) {

@@ -1,3 +1,14 @@
+management:
+  endpoints:
+    web:
+      exposure:
+        include: shutdown,health
+
+management:
+  endpoint:
+    shutdown:
+      enabled: true
+
 schalter:
   configItems:
     - name: dev1

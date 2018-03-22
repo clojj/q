@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
+import org.springframework.boot.web.servlet.ServletListenerRegistrationBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
@@ -14,12 +15,14 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 import org.springframework.web.socket.handler.TextWebSocketHandler
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
+import javax.servlet.ServletContextListener
 
 
-class WebsocketHandler() : TextWebSocketHandler() {
+class WebsocketHandler : TextWebSocketHandler() {
 
-    private val sessionMap = HashMap<WebSocketSession, User>()
+    private val sessionMap = ConcurrentHashMap<WebSocketSession, User>()
 
     private var uids = AtomicLong(0)
 
@@ -46,14 +49,13 @@ class WebsocketHandler() : TextWebSocketHandler() {
 
 //            TODO remove these ?
             "join" -> {
+                println("Thread-ID ${Thread.currentThread().id} session $session")
                 val user = User(text)
-                sessionMap[session!!] = user
-                // tell this user about all other users
-                if (text == "newly joined") {
-                    sessionMap.values.map { sessionUser -> emit(session, WsMsg("join", sessionUser.name)) }
-                }
-                // tell all other users, about this user
+
+                session!!.sendMessage(TextMessage(objectMapper.writeValueAsString(user)))
+                sessionMap.getOrPut(session, { user })
                 broadcastToOthers(session, WsMsg("join", user.name))
+
             }
             "say" -> {
                 broadcast(WsMsg("say", text))
@@ -62,7 +64,11 @@ class WebsocketHandler() : TextWebSocketHandler() {
         }
     }
 
-    private fun emit(session: WebSocketSession, msg: WsMsg) = session.sendMessage(TextMessage(jacksonObjectMapper().writeValueAsString(msg)))
+    private val objectMapper = jacksonObjectMapper()
+
+    private fun emit(session: WebSocketSession, msg: WsMsg) = {
+        session.sendMessage(TextMessage(jacksonObjectMapper().writeValueAsString(msg)))
+    }
 
     private fun broadcast(msg: WsMsg) = sessionMap.forEach { emit(it.key, msg) }
 
@@ -85,7 +91,14 @@ class WSConfig() : WebSocketConfigurer {
 }
 
 @SpringBootApplication
-class WebsocketApplication
+class WebsocketApplication(val storage: Storage) {
+    @Bean
+    fun myServletListener(): ServletListenerRegistrationBean<ServletContextListener> {
+        val srb = ServletListenerRegistrationBean<ServletContextListener>()
+        srb.listener = storage
+        return srb
+    }
+}
 
 fun main(args: Array<String>) {
     runApplication<WebsocketApplication>(*args)

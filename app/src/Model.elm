@@ -75,7 +75,7 @@ encodeWsMsg wsMsgData =
                   )
                 ]
 
-
+-- TODO try elm-json-extra "when"
 decodeWsMsg : DEC.Decoder WsMsgData
 decodeWsMsg =
     let
