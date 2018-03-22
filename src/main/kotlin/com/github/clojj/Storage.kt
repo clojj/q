@@ -50,7 +50,6 @@ class Storage(private var config: SchalterConfig) : ServletContextListener {
             config.configItems.forEach { configItem: ConfigItem ->
                 initKey(store, txn, configItem.name)
             }
-            txn.commit()
         }
     }
 
