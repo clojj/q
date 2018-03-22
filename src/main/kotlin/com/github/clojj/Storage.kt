@@ -53,6 +53,13 @@ class Storage(private var config: SchalterConfig) : ServletContextListener {
         }
     }
 
+    fun store(key: String, value: String) {
+        env.executeInTransaction { txn ->
+            val store = env.openStore("Schalter", StoreConfig.WITHOUT_DUPLICATES, txn)
+            store.put(txn, StringBinding.stringToEntry(key), StringBinding.stringToEntry(value))
+        }
+    }
+
     private fun initKey(store: @NotNull Store, txn: @NotNull Transaction, key: String) {
         val value = store.get(txn, StringBinding.stringToEntry(key))
         println("key:value = $key:$value")

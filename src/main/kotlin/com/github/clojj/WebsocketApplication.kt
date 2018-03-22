@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicLong
 import javax.servlet.ServletContextListener
 
 
-class WebsocketHandler : TextWebSocketHandler() {
+class WebsocketHandler(val storage: Storage) : TextWebSocketHandler() {
 
     private val sessionMap = ConcurrentHashMap<WebSocketSession, User>()
 
@@ -39,12 +39,9 @@ class WebsocketHandler : TextWebSocketHandler() {
             "set" -> {
                 val itemAndName = ItemAndName(data.get("item").asText(), data.get("name").asText())
 
-                if (sessionMap[session] == null) {
-                    val user = User(itemAndName.name)
-                    sessionMap[session!!] = user
-                }
-
-                broadcast(WsMsg("set", itemAndName))
+                sessionMap.getOrPut(session, { User(itemAndName.name) })
+                storage.store(itemAndName.item, itemAndName.name)
+                broadcastToOthers(session!!, WsMsg("set", itemAndName))
             }
 
 //            TODO remove these ?
@@ -84,9 +81,9 @@ class WebsocketHandler : TextWebSocketHandler() {
 
 @Configuration
 @EnableWebSocket
-class WSConfig() : WebSocketConfigurer {
+class WSConfig(val storage: Storage) : WebSocketConfigurer {
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
-        registry.addHandler(WebsocketHandler(), "/chat")
+        registry.addHandler(WebsocketHandler(storage), "/chat")
     }
 }
 

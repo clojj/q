@@ -4,6 +4,7 @@ import Html exposing (Html, text, div, h1, h2, h3, img, input, button)
 import Html.Attributes exposing (src, placeholder, disabled)
 import Html.Events exposing (onInput, onClick)
 import Set exposing (Set, empty, insert, toList)
+import Dict as D
 import Json.Encode exposing (encode, Value, string, int, float, bool, list, object)
 import Json.Decode exposing (Decoder, decodeString)
 import Maybe exposing (map)
@@ -16,8 +17,8 @@ init : Flags -> ( Model, Cmd Msg )
 init _ =
     ( { error = Nothing
       , name = ""
-      , users = empty
-      , items = []
+      , users = empty -- TODO List
+      , items = D.empty
       }
       -- TODO do both ?
       --    , wsMessageOut (joining "newly joined")
@@ -74,7 +75,11 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         AllItems (Ok is) ->
-            ( { model | items = is.items }, Cmd.none )
+            let
+                pairs =
+                    List.map (\itemAndName -> ( itemAndName.item, itemAndName.name )) is.items
+            in
+                ( { model | items = D.fromList pairs }, Cmd.none )
 
         AllItems (Err _) ->
             ( { model | error = Just "Error getting items" }, Cmd.none )
@@ -83,7 +88,7 @@ update msg model =
             ( { model | name = s }, Cmd.none )
 
         SetItem ->
-            ( model, wsMessageOut (setting "devTest" model.name) )
+            ( model, wsMessageOut (setting "dev1" model.name) )
 
         Join ->
             ( model, wsMessageOut (joining model.name) )
@@ -99,10 +104,13 @@ update msg model =
 
                     Ok (SetMsg itemAndName) ->
                         let
-                            _ = Debug.log "result: " result
-                            _ = Debug.log "itemAndName: " itemAndName
+                            _ =
+                                Debug.log "result: " result
+
+                            _ =
+                                Debug.log "itemAndName: " itemAndName
                         in
-                            ( { model | items = itemAndName :: model.items }, Cmd.none )
+                            ( { model | items = D.insert itemAndName.item itemAndName.name model.items }, Cmd.none )
 
                     Err err ->
                         ( { model | error = Just err }, Cmd.none )
@@ -128,7 +136,7 @@ view model =
         , input [ placeholder "Name", onInput InputName, Html.Attributes.value model.name ] []
         , button [ onClick Join, disabled (model.name == "") ] [ text "Login" ]
         , h2 [] [ text "Items" ]
-        , Html.div [] (List.map (\item -> Html.div [] [ Html.text item.item ]) model.items)
+        , Html.div [] (List.map (\( item, name ) -> Html.div [] [ Html.div [] [ Html.text item ], Html.div [] [ Html.text name ] ]) (D.toList model.items))
         , button [ onClick SetItem ] [ text "Set" ]
         , h2 [] [ text "Benutzer" ]
         , Html.div [] (List.map (\name -> Html.div [] [ Html.text name ]) (toList model.users))

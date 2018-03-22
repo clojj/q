@@ -1,7 +1,7 @@
 module Model exposing (..)
 
 import Set exposing (Set, empty, insert, toList)
-import Dict
+import Dict as D
 import Json.Encode as ENC
 import Json.Decode as DEC
 import Json.Decode.Pipeline as DECP
@@ -15,7 +15,7 @@ type alias Model =
     { error : Maybe String
     , name : String
     , users : Set String
-    , items : List ItemAndName
+    , items : D.Dict String String
     }
 
 
@@ -75,7 +75,11 @@ encodeWsMsg wsMsgData =
                   )
                 ]
 
+
+
 -- TODO try elm-json-extra "when"
+
+
 decodeWsMsg : DEC.Decoder WsMsgData
 decodeWsMsg =
     let
@@ -107,6 +111,3 @@ itemsDecoder : DEC.Decoder Items
 itemsDecoder =
     DECP.decode Items
         |> DECP.required "items" (DEC.list itemAndNameDecoder)
-
-
-
