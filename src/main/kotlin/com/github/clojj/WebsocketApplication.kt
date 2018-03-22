@@ -14,12 +14,13 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 import org.springframework.web.socket.handler.TextWebSocketHandler
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 
 class WebsocketHandler() : TextWebSocketHandler() {
 
-    private val sessionMap = HashMap<WebSocketSession, User>()
+    private val sessionMap = ConcurrentHashMap<WebSocketSession, User>()
 
     private var uids = AtomicLong(0)
 
@@ -46,6 +47,7 @@ class WebsocketHandler() : TextWebSocketHandler() {
 
 //            TODO remove these ?
             "join" -> {
+                println("Thread.currentThread().id = ${Thread.currentThread().id}")
                 val user = User(text)
                 sessionMap[session!!] = user
                 // tell this user about all other users
@@ -53,7 +55,7 @@ class WebsocketHandler() : TextWebSocketHandler() {
                     sessionMap.values.map { sessionUser -> emit(session, WsMsg("join", sessionUser.name)) }
                 }
                 // tell all other users, about this user
-                broadcastToOthers(session, WsMsg("join", user.name))
+                broadcast(WsMsg("join", user.name))
             }
             "say" -> {
                 broadcast(WsMsg("say", text))
@@ -62,7 +64,11 @@ class WebsocketHandler() : TextWebSocketHandler() {
         }
     }
 
-    private fun emit(session: WebSocketSession, msg: WsMsg) = session.sendMessage(TextMessage(jacksonObjectMapper().writeValueAsString(msg)))
+    private fun emit(session: WebSocketSession, msg: WsMsg) = {
+        if (session.isOpen) {
+            session.sendMessage(TextMessage(jacksonObjectMapper().writeValueAsString(msg)))
+        }
+    }
 
     private fun broadcast(msg: WsMsg) = sessionMap.forEach { emit(it.key, msg) }
 
