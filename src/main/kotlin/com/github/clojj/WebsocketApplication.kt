@@ -37,10 +37,13 @@ class WebsocketHandler(val storage: Storage) : TextWebSocketHandler() {
         val text = data.asText()
         when (json.get("msgType").asText()) {
             "set" -> {
-                val itemAndName = ItemAndName(data.get("item").asText(), data.get("name").asText())
+                val item = data.get("item").asText()
+                val name = data.get("name").asText()
 
-                sessionMap.getOrPut(session, { User(itemAndName.name) })
-                storage.store(itemAndName.item, itemAndName.name)
+                sessionMap.getOrPut(session, { User(name) })
+                storage.store(item, name)
+
+                val itemAndName = ItemAndName(item, name)
                 broadcastToOthers(session!!, WsMsg("set", itemAndName))
             }
 
@@ -63,9 +66,7 @@ class WebsocketHandler(val storage: Storage) : TextWebSocketHandler() {
 
     private val objectMapper = jacksonObjectMapper()
 
-    private fun emit(session: WebSocketSession, msg: WsMsg) = {
-        session.sendMessage(TextMessage(jacksonObjectMapper().writeValueAsString(msg)))
-    }
+    private fun emit(session: WebSocketSession, msg: WsMsg) = session.sendMessage(TextMessage(jacksonObjectMapper().writeValueAsString(msg)))
 
     private fun broadcast(msg: WsMsg) = sessionMap.forEach { emit(it.key, msg) }
 
