@@ -51,10 +51,9 @@ class WebsocketHandler(val storage: Storage) : TextWebSocketHandler() {
             "join" -> {
                 println("Thread-ID ${Thread.currentThread().id} session $session")
                 val user = User(text)
-
-                session!!.sendMessage(TextMessage(objectMapper.writeValueAsString(user)))
                 sessionMap.getOrPut(session, { user })
-                broadcastToOthers(session, WsMsg("join", user.name))
+//                session!!.sendMessage(TextMessage(objectMapper.writeValueAsString(user)))
+//                broadcastToOthers(session, WsMsg("join", user.name))
 
             }
             "say" -> {

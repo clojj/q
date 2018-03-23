@@ -22,7 +22,7 @@ init _ =
       }
       -- TODO do both ?
       --    , wsMessageOut (joining "newly joined")
-    , fetchItems
+    , Cmd.batch [fetchItems, wsMessageOut (joining "NEW")]
     )
 
 
