@@ -33,8 +33,7 @@ fetchItems =
 type Msg
     = WsMessageIn String
     | InputName String
-    | Join
-    | SetItem
+    | SetItem String String
     | AllItems (Result Http.Error Items)
 
 
@@ -85,11 +84,8 @@ update msg model =
         InputName s ->
             ( { model | name = s }, Cmd.none )
 
-        SetItem ->
-            ( model, wsMessageOut (setting "dev1" model.name) )
-
-        Join ->
-            ( model, wsMessageOut (joining model.name) )
+        SetItem item name ->
+            ( model, wsMessageOut (setting item name) )
 
         WsMessageIn msg ->
             let
@@ -135,12 +131,16 @@ view : Model -> Html Msg
 view model =
     div []
         [ h2 [] [ text "Stellwerk" ]
-        , input [ placeholder "Name", onInput InputName, Html.Attributes.value model.name ] []
-        , button [ onClick Join, disabled (model.name == "") ] [ text "Login" ]
         , h2 [] [ text "Items" ]
-        , Html.div [] (List.map (\( item, name ) -> Html.div [] [ Html.div [] [ Html.text item ], Html.div [] [ Html.text name ] ]) (D.toList model.items))
-        , button [ onClick SetItem ] [ text "Set" ]
+        , Html.div []
+            (List.map
+                (\( item, name ) -> Html.div [] [ Html.div [] [ Html.text item ]
+                                                 , Html.div [] [ Html.text name
+                                                                , button [ onClick (SetItem item model.name) ] [ text "Set" ]
+                                                                ] ])
+                (D.toList model.items))
         , h2 [] [ text "Benutzer" ]
+        , input [ placeholder "Name", onInput InputName, Html.Attributes.value model.name ] []
         , Html.div [] (List.map (\name -> Html.div [] [ Html.text name ]) (toList model.users))
         , h2 [] [ text "Fehler" ]
         , Html.div []
