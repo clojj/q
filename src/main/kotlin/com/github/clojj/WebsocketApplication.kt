@@ -31,7 +31,9 @@ class WebsocketHandler(val storage: Storage) : TextWebSocketHandler() {
         sessionMap -= session
     }
 
-    public override fun handleTextMessage(session: WebSocketSession?, message: TextMessage?) {
+    public override fun handleTextMessage(session: WebSocketSession, message: TextMessage?) {
+        println("Thread ${Thread.currentThread().id} session $session sessionMap ${System.identityHashCode(sessionMap)}")
+
         val json = ObjectMapper().readTree(message?.payload)
         val data = json.get("data")
         val text = data.asText()
@@ -44,18 +46,16 @@ class WebsocketHandler(val storage: Storage) : TextWebSocketHandler() {
                 storage.store(item, name)
 
                 val itemAndName = ItemAndName(item, name)
-                broadcastToOthers(session!!, WsMsg("set", itemAndName))
+                broadcast(WsMsg("set", itemAndName))
             }
 
-//            TODO remove these ?
             "join" -> {
-                println("Thread-ID ${Thread.currentThread().id} session $session")
                 val user = User(text)
                 sessionMap.getOrPut(session, { user })
-//                session!!.sendMessage(TextMessage(objectMapper.writeValueAsString(user)))
-//                broadcastToOthers(session, WsMsg("join", user.name))
-
+                session.sendMessage(TextMessage(objectMapper.writeValueAsString(WsMsg("allItems", Items(storage.allItems())))))
             }
+
+            // TODO ?
             "say" -> {
                 broadcast(WsMsg("say", text))
                 sendDelay(text, session.toString())

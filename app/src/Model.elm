@@ -32,6 +32,7 @@ type alias WsMsg =
 type WsMsgData
     = JoinMsg String
     | SetMsg ItemAndName
+    | AllItemsMsg Items
 
 
 type alias ItemAndName =
@@ -75,6 +76,8 @@ encodeWsMsg wsMsgData =
                   )
                 ]
 
+        _ ->
+            ENC.null
 
 
 -- TODO try elm-json-extra "when"
@@ -88,6 +91,9 @@ decodeWsMsg =
             case tag of
                 "join" ->
                     DEC.field "data" (DEC.map JoinMsg DEC.string)
+
+                "allItems" ->
+                    DEC.field "data" (DEC.map AllItemsMsg itemsDecoder)
 
                 "set" ->
                     DEC.field "data" (DEC.map SetMsg itemAndNameDecoder)

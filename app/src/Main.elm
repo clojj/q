@@ -20,9 +20,7 @@ init _ =
       , users = empty -- TODO List
       , items = D.empty
       }
-      -- TODO do both ?
-      --    , wsMessageOut (joining "newly joined")
-    , Cmd.batch [fetchItems, wsMessageOut (joining "NEW")]
+    , wsMessageOut (joining "NEW")
     )
 
 
@@ -74,10 +72,10 @@ setting item name =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        AllItems (Ok is) ->
+        AllItems (Ok theItems) ->
             let
                 pairs =
-                    List.map (\itemAndName -> ( itemAndName.item, itemAndName.name )) is.items
+                    List.map (\itemAndName -> ( itemAndName.item, itemAndName.name )) theItems.items
             in
                 ( { model | items = D.fromList pairs }, Cmd.none )
 
@@ -103,14 +101,18 @@ update msg model =
                         ( { model | users = insert name model.users }, Cmd.none )
 
                     Ok (SetMsg itemAndName) ->
-                        let
-                            _ =
-                                Debug.log "result: " result
+                        --                        let
+                        --                            _ =
+                        --                                Debug.log "itemAndName: " itemAndName
+                        --                        in
+                        ( { model | items = D.insert itemAndName.item itemAndName.name model.items }, Cmd.none )
 
-                            _ =
-                                Debug.log "itemAndName: " itemAndName
+                    Ok (AllItemsMsg theItems) ->
+                        let
+                            pairs =
+                                List.map (\itemAndName -> ( itemAndName.item, itemAndName.name )) theItems.items
                         in
-                            ( { model | items = D.insert itemAndName.item itemAndName.name model.items }, Cmd.none )
+                            ( { model | items = D.fromList pairs }, Cmd.none )
 
                     Err err ->
                         ( { model | error = Just err }, Cmd.none )
