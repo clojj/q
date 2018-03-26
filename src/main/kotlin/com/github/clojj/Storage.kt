@@ -18,6 +18,10 @@ import javax.servlet.ServletContextListener
 @Configuration
 class SchalterConfig {
     var configItems: MutableList<ConfigItem> = mutableListOf()
+
+    override fun toString(): String {
+        return "SchalterConfig(configItems=$configItems)"
+    }
 }
 
 class ConfigItem {
@@ -46,7 +50,7 @@ class Storage(private var config: SchalterConfig) : ServletContextListener {
 
         // initialize the store
         env.executeInTransaction { txn ->
-            val store = env.openStore("Schalter", StoreConfig.WITHOUT_DUPLICATES, txn)
+            val store = schalterStore(txn)
             config.configItems.forEach { configItem: ConfigItem ->
                 initKey(store, txn, configItem.name)
             }
@@ -55,14 +59,12 @@ class Storage(private var config: SchalterConfig) : ServletContextListener {
 
     fun store(key: String, value: String) {
         env.executeInTransaction { txn ->
-            val store = env.openStore("Schalter", StoreConfig.WITHOUT_DUPLICATES, txn)
-            store.put(txn, StringBinding.stringToEntry(key), StringBinding.stringToEntry(value))
+            schalterStore(txn).put(txn, StringBinding.stringToEntry(key), StringBinding.stringToEntry(value))
         }
     }
 
     private fun initKey(store: @NotNull Store, txn: @NotNull Transaction, key: String) {
         val value = store.get(txn, StringBinding.stringToEntry(key))
-        println("key:value = $key:$value")
         if (value == null) {
             store.put(txn, StringBinding.stringToEntry(key), StringBinding.stringToEntry("EMPTY"))
         }
@@ -71,14 +73,17 @@ class Storage(private var config: SchalterConfig) : ServletContextListener {
     fun allItems(): List<ItemAndName> {
         val items: MutableList<ItemAndName> = mutableListOf()
         env.executeInTransaction { txn ->
-            val store = env.openStore("Schalter", StoreConfig.WITHOUT_DUPLICATES, txn)
-            store.openCursor(txn).use { cursor ->
+            schalterStore(txn).openCursor(txn).use { cursor ->
                 while (cursor.next) {
                     items.add(ItemAndName(StringBinding.entryToString(cursor.key), StringBinding.entryToString(cursor.value)))
                 }
             }
         }
-        return items
+        return items.sortedBy { itemAndName -> itemAndName.item }
+    }
+
+    private fun schalterStore(txn: @NotNull Transaction): @NotNull Store {
+        return env.openStore("Schalter", StoreConfig.WITHOUT_DUPLICATES, txn)
     }
 
 }

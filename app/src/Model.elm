@@ -1,7 +1,6 @@
 module Model exposing (..)
 
-import Set exposing (Set, empty, insert, toList)
-import Dict as D
+import Set as S
 import Json.Encode as ENC
 import Json.Decode as DEC
 import Json.Decode.Pipeline as DECP
@@ -14,8 +13,8 @@ type alias Flags =
 type alias Model =
     { error : Maybe String
     , name : String
-    , users : Set String
-    , items : D.Dict String String
+    , users : S.Set String
+    , items : List ItemAndName
     }
 
 
@@ -35,8 +34,17 @@ type WsMsgData
     | AllItemsMsg Items
 
 
+type alias Item =
+    String
+
+
+type Toggle
+    = SetItem ItemAndName
+    | FreeItem Item
+
+
 type alias ItemAndName =
-    { item : String
+    { item : Item
     , name : String
     }
 
@@ -78,6 +86,7 @@ encodeWsMsg wsMsgData =
 
         _ ->
             ENC.null
+
 
 
 -- TODO try elm-json-extra "when"

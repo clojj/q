@@ -3,8 +3,8 @@ module Main exposing (..)
 import Html exposing (Html, text, div, h1, h2, h3, img, input, button)
 import Html.Attributes exposing (src, placeholder, disabled)
 import Html.Events exposing (onInput, onClick)
-import Set exposing (Set, empty, insert, toList)
-import Dict as D
+import Set as S
+import List as L
 import Json.Encode exposing (encode, Value, string, int, float, bool, list, object)
 import Json.Decode exposing (Decoder, decodeString)
 import Maybe exposing (map)
@@ -17,8 +17,8 @@ init : Flags -> ( Model, Cmd Msg )
 init _ =
     ( { error = Nothing
       , name = ""
-      , users = empty -- TODO List
-      , items = D.empty
+      , users = S.empty -- TODO List
+      , items = []
       }
     , wsMessageOut (joining "NEW")
     )
@@ -71,12 +71,9 @@ setting item name =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        -- fetch
         AllItems (Ok theItems) ->
-            let
-                pairs =
-                    List.map (\itemAndName -> ( itemAndName.item, itemAndName.name )) theItems.items
-            in
-                ( { model | items = D.fromList pairs }, Cmd.none )
+            ( { model | items = theItems.items }, Cmd.none )
 
         AllItems (Err _) ->
             ( { model | error = Just "Error getting items" }, Cmd.none )
@@ -94,21 +91,29 @@ update msg model =
             in
                 case result of
                     Ok (JoinMsg name) ->
-                        ( { model | users = insert name model.users }, Cmd.none )
+                        ( { model | users = S.insert name model.users }, Cmd.none )
 
                     Ok (SetMsg itemAndName) ->
                         --                        let
                         --                            _ =
                         --                                Debug.log "itemAndName: " itemAndName
                         --                        in
-                        ( { model | items = D.insert itemAndName.item itemAndName.name model.items }, Cmd.none )
+                        ( { model
+                            | items =
+                                L.map
+                                    (\{ item, name } ->
+                                        if (itemAndName.item == item) then
+                                            { item = item, name = itemAndName.name }
+                                        else
+                                            { item = item, name = name }
+                                    )
+                                    model.items
+                          }
+                        , Cmd.none
+                        )
 
                     Ok (AllItemsMsg theItems) ->
-                        let
-                            pairs =
-                                List.map (\itemAndName -> ( itemAndName.item, itemAndName.name )) theItems.items
-                        in
-                            ( { model | items = D.fromList pairs }, Cmd.none )
+                        ( { model | items = theItems.items }, Cmd.none )
 
                     Err err ->
                         ( { model | error = Just err }, Cmd.none )
@@ -134,14 +139,20 @@ view model =
         , h2 [] [ text "Items" ]
         , Html.div []
             (List.map
-                (\( item, name ) -> Html.div [] [ Html.div [] [ Html.text item ]
-                                                 , Html.div [] [ Html.text name
-                                                                , button [ onClick (SetItem item model.name) ] [ text "Set" ]
-                                                                ] ])
-                (D.toList model.items))
+                (\{ item, name } ->
+                    Html.div []
+                        [ Html.div [] [ Html.text item ]
+                        , Html.div []
+                            [ Html.text name
+                            , button [ onClick (SetItem item model.name) ] [ text "Set" ]
+                            ]
+                        ]
+                )
+                model.items
+            )
         , h2 [] [ text "Benutzer" ]
         , input [ placeholder "Name", onInput InputName, Html.Attributes.value model.name ] []
-        , Html.div [] (List.map (\name -> Html.div [] [ Html.text name ]) (toList model.users))
+        , Html.div [] (List.map (\name -> Html.div [] [ Html.text name ]) (S.toList model.users))
         , h2 [] [ text "Fehler" ]
         , Html.div []
             [ case model.error of

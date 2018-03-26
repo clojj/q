@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicLong
 import javax.servlet.ServletContextListener
 
 
-class WebsocketHandler(val storage: Storage) : TextWebSocketHandler() {
+class WebsocketHandler(private val storage: Storage) : TextWebSocketHandler() {
 
     private val sessionMap = ConcurrentHashMap<WebSocketSession, User>()
 
@@ -54,12 +54,6 @@ class WebsocketHandler(val storage: Storage) : TextWebSocketHandler() {
                 sessionMap.getOrPut(session, { user })
                 session.sendMessage(TextMessage(objectMapper.writeValueAsString(WsMsg("allItems", Items(storage.allItems())))))
             }
-
-            // TODO ?
-            "say" -> {
-                broadcast(WsMsg("say", text))
-                sendDelay(text, session.toString())
-            }
         }
     }
 
@@ -70,12 +64,6 @@ class WebsocketHandler(val storage: Storage) : TextWebSocketHandler() {
     private fun broadcast(msg: WsMsg) = sessionMap.forEach { emit(it.key, msg) }
 
     private fun broadcastToOthers(me: WebSocketSession, msg: WsMsg) = sessionMap.filterNot { it.key == me }.forEach { emit(it.key, msg) }
-
-    private fun sendDelay(delayMillis: String, session: String) {
-        val interval = delayMillis.toLong()
-        val delay = Delay(interval, "Delay from $session", System.currentTimeMillis() + interval)
-        // TODO
-    }
 
 }
 
