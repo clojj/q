@@ -34,7 +34,7 @@ type Msg
     = WsMessageIn String
     | InputName String
     | SetItem String String
-    | AllItems (Result Http.Error Items)
+    | AllItems (Result Http.Error (List ItemAndName))
 
 
 wsURL : String
@@ -73,7 +73,7 @@ update msg model =
     case msg of
         -- fetch
         AllItems (Ok theItems) ->
-            ( { model | items = theItems.items }, Cmd.none )
+            ( { model | items = toStateList theItems }, Cmd.none )
 
         AllItems (Err _) ->
             ( { model | error = Just "Error getting items" }, Cmd.none )
@@ -101,11 +101,11 @@ update msg model =
                         ( { model
                             | items =
                                 L.map
-                                    (\{ item, name } ->
-                                        if (itemAndName.item == item) then
-                                            { item = item, name = itemAndName.name }
+                                    (\{ item, state } ->
+                                        if (item == itemAndName.item) then
+                                            { item = item, state = Set itemAndName.name }
                                         else
-                                            { item = item, name = name }
+                                            { item = item, state = state }
                                     )
                                     model.items
                           }
@@ -113,7 +113,7 @@ update msg model =
                         )
 
                     Ok (AllItemsMsg theItems) ->
-                        ( { model | items = theItems.items }, Cmd.none )
+                        ( { model | items = toStateList theItems }, Cmd.none )
 
                     Err err ->
                         ( { model | error = Just err }, Cmd.none )
@@ -139,11 +139,14 @@ view model =
         , h2 [] [ text "Items" ]
         , Html.div []
             (List.map
-                (\{ item, name } ->
+                (\{ item, state } ->
                     Html.div []
                         [ Html.div [] [ Html.text item ]
                         , Html.div []
-                            [ Html.text name
+                            [ case state of
+                                Set name -> Html.text name
+                                Free -> Html.text "[FREI]"
+                                Setting name -> Html.text "[SETTING]"
                             , button [ onClick (SetItem item model.name) ] [ text "Set" ]
                             ]
                         ]

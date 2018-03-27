@@ -52,7 +52,7 @@ class WebsocketHandler(private val storage: Storage) : TextWebSocketHandler() {
             "join" -> {
                 val user = User(text)
                 sessionMap.getOrPut(session, { user })
-                session.sendMessage(TextMessage(objectMapper.writeValueAsString(WsMsg("allItems", Items(storage.allItems())))))
+                session.sendMessage(TextMessage(objectMapper.writeValueAsString(WsMsg("allItems", storage.allItems()))))
             }
         }
     }

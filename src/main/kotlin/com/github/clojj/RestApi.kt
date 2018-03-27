@@ -8,8 +8,8 @@ import javax.annotation.PreDestroy
 class RestApi(private val storage: Storage) {
 
     @GetMapping("/items")
-    fun items(): Items {
-        return Items(storage.allItems())
+    fun items(): List<ItemAndName> {
+        return storage.allItems()
     }
 
 }

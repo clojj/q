@@ -52,7 +52,7 @@ class Storage(private var config: SchalterConfig) : ServletContextListener {
         env.executeInTransaction { txn ->
             val store = schalterStore(txn)
             config.configItems.forEach { configItem: ConfigItem ->
-                initKey(store, txn, configItem.name)
+                store.add(txn, StringBinding.stringToEntry(configItem.name), StringBinding.stringToEntry(""))
             }
         }
     }
@@ -60,13 +60,6 @@ class Storage(private var config: SchalterConfig) : ServletContextListener {
     fun store(key: String, value: String) {
         env.executeInTransaction { txn ->
             schalterStore(txn).put(txn, StringBinding.stringToEntry(key), StringBinding.stringToEntry(value))
-        }
-    }
-
-    private fun initKey(store: @NotNull Store, txn: @NotNull Transaction, key: String) {
-        val value = store.get(txn, StringBinding.stringToEntry(key))
-        if (value == null) {
-            store.put(txn, StringBinding.stringToEntry(key), StringBinding.stringToEntry("EMPTY"))
         }
     }
 

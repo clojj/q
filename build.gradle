@@ -21,8 +21,6 @@ apply plugin: 'kotlin-spring'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
 
-sourceCompatibility = 1.8
-
 compileKotlin {
     kotlinOptions.jvmTarget = "1.8"
 }

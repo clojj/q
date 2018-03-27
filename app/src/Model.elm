@@ -1,6 +1,7 @@
 module Model exposing (..)
 
 import Set as S
+import List as L
 import Json.Encode as ENC
 import Json.Decode as DEC
 import Json.Decode.Pipeline as DECP
@@ -14,7 +15,7 @@ type alias Model =
     { error : Maybe String
     , name : String
     , users : S.Set String
-    , items : List ItemAndName
+    , items : List ItemAndState
     }
 
 
@@ -31,21 +32,50 @@ type alias WsMsg =
 type WsMsgData
     = JoinMsg String
     | SetMsg ItemAndName
-    | AllItemsMsg Items
+    | AllItemsMsg (List ItemAndName)
 
 
 type alias Item =
     String
 
 
-type Toggle
-    = SetItem ItemAndName
-    | FreeItem Item
+type ItemState
+    = Set String
+    | Free
+    | Setting String
 
 
 type alias ItemAndName =
     { item : Item
     , name : String
+    }
+
+toStateList : List ItemAndName -> List ItemAndState
+toStateList itemAndNames =
+    L.map toItemAndState itemAndNames
+
+toItemAndState : ItemAndName -> ItemAndState
+toItemAndState { item, name } =
+    { item = item, state = case name of
+                            "" -> Free
+                            _ -> Set name
+    }
+
+toNameList : List ItemAndState -> List ItemAndName
+toNameList itemAndStates =
+    L.map toItemAndName itemAndStates
+
+toItemAndName : ItemAndState -> ItemAndName
+toItemAndName { item, state } =
+    { item = item, name = case state of
+                            Free -> ""
+                            Set name -> name
+                            Setting name -> name
+    }
+
+type alias ItemAndState =
+    { item : Item
+    , state : ItemState
     }
 
 
@@ -117,12 +147,6 @@ decodeWsMsg =
 -------------------------------------------------------------------------
 
 
-type alias Items =
-    { items : List ItemAndName
-    }
-
-
-itemsDecoder : DEC.Decoder Items
+itemsDecoder : DEC.Decoder (List ItemAndName)
 itemsDecoder =
-    DECP.decode Items
-        |> DECP.required "items" (DEC.list itemAndNameDecoder)
+    DEC.list itemAndNameDecoder
