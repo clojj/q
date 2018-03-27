@@ -7,7 +7,9 @@ import org.springframework.boot.runApplication
 import org.springframework.boot.web.servlet.ServletListenerRegistrationBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.scheduling.TaskScheduler
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
+import org.springframework.stereotype.Component
 import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
@@ -15,6 +17,7 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 import org.springframework.web.socket.handler.TextWebSocketHandler
+import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import javax.servlet.ServletContextListener
@@ -98,5 +101,19 @@ class ThreadPoolTaskSchedulerConfig {
         threadPoolTaskScheduler.poolSize = 5
         threadPoolTaskScheduler.threadNamePrefix = "ThreadPoolTaskScheduler"
         return threadPoolTaskScheduler
+    }
+}
+
+@Component
+class DelayService(private val threadPoolTaskScheduler: TaskScheduler) {
+
+    fun itemCountdown(item: String, delay: Long) {
+        if (delay > 0) {
+            println("scheduling $item to expire in $delay milliseconds")
+            threadPoolTaskScheduler.schedule({
+                println("${Thread.currentThread().name}: $item expired")
+//                TODO free item + send to all websocket sessions
+            }, Instant.ofEpochMilli(System.currentTimeMillis() + delay))
+        }
     }
 }

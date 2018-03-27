@@ -16,7 +16,6 @@ import Model exposing (..)
 init : Flags -> ( Model, Cmd Msg )
 init _ =
     ( { error = Nothing
-      , name = ""
       , users = S.empty -- TODO List
       , items = []
       }
@@ -32,7 +31,6 @@ fetchItems =
 
 type Msg
     = WsMessageIn String
-    | InputName String
     | SetItem String String
     | InputItem String String
     | FreeItem String
@@ -69,16 +67,24 @@ setting item name =
     in
         encode 2 (encodeWsMsg setMsg)
 
-updateInItems : List ItemAndState -> Item -> ItemState -> List ItemAndState
-updateInItems items it newstate =
+
+updateInItems : List ItemAndState -> Item -> (ItemState -> ItemState) -> List ItemAndState
+updateInItems items item fn =
     L.map
-        (\{ item, state } ->
-            if (item == it) then
-                { item = it, state = newstate }
+        (\itemAndState ->
+            if (item == itemAndState.item) then
+                { itemAndState | state = fn itemAndState.state }
             else
-                { item = item, state = state }
+                itemAndState
         )
         items
+
+
+
+--                        let
+--                            _ =
+--                                Debug.log "itemAndName: " itemAndName
+--                        in
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -91,17 +97,14 @@ update msg model =
         AllItems (Err _) ->
             ( { model | error = Just "Error getting items" }, Cmd.none )
 
-        InputName s ->
-            ( { model | name = s }, Cmd.none )
-
         SetItem item name ->
             ( model, wsMessageOut (setting item name) )
 
         InputItem item name ->
-            ( { model | items = updateInItems model.items item (Setting name) }, Cmd.none )
+            ( { model | items = updateInItems model.items item (\_ -> Setting name) }, Cmd.none )
 
         FreeItem item ->
-            ( { model | items = updateInItems model.items item Free }, wsMessageOut (setting item "") )
+            ( { model | items = updateInItems model.items item (\_ -> Free) }, wsMessageOut (setting item "") )
 
         WsMessageIn msg ->
             let
@@ -113,23 +116,18 @@ update msg model =
                         ( { model | users = S.insert name model.users }, Cmd.none )
 
                     Ok (SetMsg itemAndName) ->
-                        --                        let
-                        --                            _ =
-                        --                                Debug.log "itemAndName: " itemAndName
-                        --                        in
                         ( { model
                             | items =
-                                L.map
-                                    (\{ item, state } ->
-                                        if (item == itemAndName.item) then
-                                            { item = item, state = case itemAndName.name of
-                                                                    "" -> Free
-                                                                    _ -> Set itemAndName.name
-                                            }
-                                        else
-                                            { item = item, state = state }
+                                updateInItems model.items
+                                    itemAndName.item
+                                    (\_ ->
+                                        case itemAndName.name of
+                                            "" ->
+                                                Free
+
+                                            _ ->
+                                                Set itemAndName.name
                                     )
-                                    model.items
                           }
                         , Cmd.none
                         )
@@ -164,16 +162,22 @@ view model =
                 (\{ item, state } ->
                     Html.div []
                         [ Html.div [] [ Html.text item ]
-                        , Html.div [] (case state of
-                                        Set name -> [Html.text name, button [ onClick (FreeItem item) ] [ text "Freigeben" ]]
-                                        Free -> [Html.text "[FREI]", button [ onClick (InputItem item "") ] [ text "Belegen" ]]
-                                        Setting name -> [input [ placeholder "Name", onInput (InputItem item), Html.Attributes.value name ] [], button [ onClick (SetItem item name) ] [ text "Belegen" ]])
+                        , Html.div []
+                            (case state of
+                                Set name ->
+                                    [ Html.text name, button [ onClick (FreeItem item) ] [ text "Freigeben" ] ]
+
+                                Free ->
+                                    [ Html.text "[FREI]", button [ onClick (InputItem item "") ] [ text "Belegen" ] ]
+
+                                Setting name ->
+                                    [ input [ placeholder "Name", onInput (InputItem item), Html.Attributes.value name ] [], button [ onClick (SetItem item name) ] [ text "Belegen" ] ]
+                            )
                         ]
                 )
                 model.items
             )
         , h2 [] [ text "Benutzer" ]
-        , input [ placeholder "Name", onInput InputName, Html.Attributes.value model.name ] []
         , Html.div [] (List.map (\name -> Html.div [] [ Html.text name ]) (S.toList model.users))
         , h2 [] [ text "Fehler" ]
         , Html.div []

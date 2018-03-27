@@ -13,7 +13,6 @@ type alias Flags =
 
 type alias Model =
     { error : Maybe String
-    , name : String
     , users : S.Set String
     , items : List ItemAndState
     }
@@ -50,28 +49,45 @@ type alias ItemAndName =
     , name : String
     }
 
+
 toStateList : List ItemAndName -> List ItemAndState
 toStateList itemAndNames =
     L.map toItemAndState itemAndNames
 
+
 toItemAndState : ItemAndName -> ItemAndState
 toItemAndState { item, name } =
-    { item = item, state = case name of
-                            "" -> Free
-                            _ -> Set name
+    { item = item
+    , state =
+        case name of
+            "" ->
+                Free
+
+            _ ->
+                Set name
     }
+
 
 toNameList : List ItemAndState -> List ItemAndName
 toNameList itemAndStates =
     L.map toItemAndName itemAndStates
 
+
 toItemAndName : ItemAndState -> ItemAndName
 toItemAndName { item, state } =
-    { item = item, name = case state of
-                            Free -> ""
-                            Set name -> name
-                            Setting name -> name
+    { item = item
+    , name =
+        case state of
+            Free ->
+                ""
+
+            Set name ->
+                name
+
+            Setting name ->
+                name
     }
+
 
 type alias ItemAndState =
     { item : Item
