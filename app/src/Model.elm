@@ -38,15 +38,19 @@ type alias Item =
     String
 
 
+type alias Name =
+    String
+
+
 type ItemState
-    = Set String
+    = Set Name
     | Free
-    | Setting String
+    | Setting Name
 
 
 type alias ItemAndName =
     { item : Item
-    , name : String
+    , name : Name
     }
 
 
