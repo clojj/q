@@ -34,6 +34,8 @@ type Msg
     = WsMessageIn String
     | InputName String
     | SetItem String String
+    | InputItem String String
+    | FreeItem String
     | AllItems (Result Http.Error (List ItemAndName))
 
 
@@ -67,6 +69,17 @@ setting item name =
     in
         encode 2 (encodeWsMsg setMsg)
 
+updateInItems : List ItemAndState -> Item -> ItemState -> List ItemAndState
+updateInItems items it newstate =
+    L.map
+        (\{ item, state } ->
+            if (item == it) then
+                { item = it, state = newstate }
+            else
+                { item = item, state = state }
+        )
+        items
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -83,6 +96,12 @@ update msg model =
 
         SetItem item name ->
             ( model, wsMessageOut (setting item name) )
+
+        InputItem item name ->
+            ( { model | items = updateInItems model.items item (Setting name) }, Cmd.none )
+
+        FreeItem item ->
+            ( { model | items = updateInItems model.items item Free }, wsMessageOut (setting item "") )
 
         WsMessageIn msg ->
             let
@@ -103,7 +122,10 @@ update msg model =
                                 L.map
                                     (\{ item, state } ->
                                         if (item == itemAndName.item) then
-                                            { item = item, state = Set itemAndName.name }
+                                            { item = item, state = case itemAndName.name of
+                                                                    "" -> Free
+                                                                    _ -> Set itemAndName.name
+                                            }
                                         else
                                             { item = item, state = state }
                                     )
@@ -142,13 +164,10 @@ view model =
                 (\{ item, state } ->
                     Html.div []
                         [ Html.div [] [ Html.text item ]
-                        , Html.div []
-                            [ case state of
-                                Set name -> Html.text name
-                                Free -> Html.text "[FREI]"
-                                Setting name -> Html.text "[SETTING]"
-                            , button [ onClick (SetItem item model.name) ] [ text "Set" ]
-                            ]
+                        , Html.div [] (case state of
+                                        Set name -> [Html.text name, button [ onClick (FreeItem item) ] [ text "Freigeben" ]]
+                                        Free -> [Html.text "[FREI]", button [ onClick (InputItem item "") ] [ text "Belegen" ]]
+                                        Setting name -> [input [ placeholder "Name", onInput (InputItem item), Html.Attributes.value name ] [], button [ onClick (SetItem item name) ] [ text "Belegen" ]])
                         ]
                 )
                 model.items
