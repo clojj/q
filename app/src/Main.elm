@@ -34,7 +34,7 @@ type Msg
     | SetItem String String
     | InputItem String String
     | FreeItem String
-    | AllItems (Result Http.Error (List ItemAndName))
+    | AllItems (Result Http.Error (List Toggle))
 
 
 wsURL : String
@@ -83,7 +83,7 @@ updateInItems items item fn =
 
 --                        let
 --                            _ =
---                                Debug.log "itemAndName: " itemAndName
+--                                Debug.log "..." xyz
 --                        in
 
 
@@ -115,18 +115,18 @@ update msg model =
                     Ok (JoinMsg name) ->
                         ( { model | users = S.insert name model.users }, Cmd.none )
 
-                    Ok (SetMsg itemAndName) ->
+                    Ok (SetMsg toggle) ->
                         ( { model
                             | items =
                                 updateInItems model.items
-                                    itemAndName.item
+                                    toggle.item
                                     (\_ ->
-                                        case itemAndName.name of
+                                        case toggle.name of
                                             "" ->
                                                 Free
 
                                             _ ->
-                                                Set itemAndName.name
+                                                Set toggle.name
                                     )
                           }
                         , Cmd.none

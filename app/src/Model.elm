@@ -30,8 +30,8 @@ type alias WsMsg =
 
 type WsMsgData
     = JoinMsg String
-    | SetMsg ItemAndName
-    | AllItemsMsg (List ItemAndName)
+    | SetMsg Toggle
+    | AllItemsMsg (List Toggle)
 
 
 type alias Item =
@@ -48,18 +48,18 @@ type ItemState
     | Setting Name
 
 
-type alias ItemAndName =
+type alias Toggle =
     { item : Item
     , name : Name
     }
 
 
-toStateList : List ItemAndName -> List ItemAndState
-toStateList itemAndNames =
-    L.map toItemAndState itemAndNames
+toStateList : List Toggle -> List ItemAndState
+toStateList toggles =
+    L.map toItemAndState toggles
 
 
-toItemAndState : ItemAndName -> ItemAndState
+toItemAndState : Toggle -> ItemAndState
 toItemAndState { item, name } =
     { item = item
     , state =
@@ -72,44 +72,23 @@ toItemAndState { item, name } =
     }
 
 
-toNameList : List ItemAndState -> List ItemAndName
-toNameList itemAndStates =
-    L.map toItemAndName itemAndStates
-
-
-toItemAndName : ItemAndState -> ItemAndName
-toItemAndName { item, state } =
-    { item = item
-    , name =
-        case state of
-            Free ->
-                ""
-
-            Set name ->
-                name
-
-            Setting name ->
-                name
-    }
-
-
 type alias ItemAndState =
     { item : Item
     , state : ItemState
     }
 
 
-encodeItemAndName : ItemAndName -> ENC.Value
-encodeItemAndName itemAndName =
+encodeToggle : Toggle -> ENC.Value
+encodeToggle toggle =
     ENC.object
-        [ ( "item", ENC.string itemAndName.item )
-        , ( "name", ENC.string itemAndName.name )
+        [ ( "item", ENC.string toggle.item )
+        , ( "name", ENC.string toggle.name )
         ]
 
 
-itemAndNameDecoder : DEC.Decoder ItemAndName
-itemAndNameDecoder =
-    DECP.decode ItemAndName
+decodeToggle : DEC.Decoder Toggle
+decodeToggle =
+    DECP.decode Toggle
         |> DECP.required "item" DEC.string
         |> DECP.required "name" DEC.string
 
@@ -155,7 +134,7 @@ decodeWsMsg =
                     DEC.field "data" (DEC.map AllItemsMsg itemsDecoder)
 
                 "set" ->
-                    DEC.field "data" (DEC.map SetMsg itemAndNameDecoder)
+                    DEC.field "data" (DEC.map SetMsg decodeToggle)
 
                 _ ->
                     DEC.fail ("I only know how to decode 'join' and 'set', not \"" ++ tag ++ "\"")
@@ -167,6 +146,6 @@ decodeWsMsg =
 -------------------------------------------------------------------------
 
 
-itemsDecoder : DEC.Decoder (List ItemAndName)
+itemsDecoder : DEC.Decoder (List Toggle)
 itemsDecoder =
-    DEC.list itemAndNameDecoder
+    DEC.list decodeToggle

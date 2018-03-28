@@ -81,7 +81,7 @@ class Storage(private var config: SchalterConfig) : ServletContextListener {
                 items.add(Toggle(entity!!.getProperty(PROP_ITEM) as String, entity.getProperty(PROP_NAME) as String, entity.getProperty(PROP_EXPIRY) as Long))
             })
         }
-        return items.sortedBy { itemAndName -> itemAndName.item }
+        return items.sortedBy { toggle -> toggle.item }
     }
 
 }

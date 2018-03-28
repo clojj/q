@@ -48,8 +48,8 @@ class WebsocketHandler(private val storage: Storage) : TextWebSocketHandler() {
                 sessionMap.getOrPut(session, { User(name) })
                 storage.store(item, name, 0)
 
-                val itemAndName = Toggle(item, name, 0)
-                broadcast(WsMsg("set", itemAndName))
+                val toggle = Toggle(item, name, 0)
+                broadcast(WsMsg("set", toggle))
             }
 
             "join" -> {
