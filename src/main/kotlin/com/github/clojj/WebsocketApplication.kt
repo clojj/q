@@ -46,9 +46,9 @@ class WebsocketHandler(private val storage: Storage) : TextWebSocketHandler() {
                 val name = data.get("name").asText()
 
                 sessionMap.getOrPut(session, { User(name) })
-                storage.store(item, name)
+                storage.store(item, name, 0)
 
-                val itemAndName = ItemAndName(item, name)
+                val itemAndName = Toggle(item, name, 0)
                 broadcast(WsMsg("set", itemAndName))
             }
 

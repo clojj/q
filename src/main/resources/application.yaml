@@ -11,9 +11,9 @@ management:
 
 schalter:
   configItems:
-    - name: dev1
-    - name: dev2
-    - name: dev3
+    - item: dev1
+    - item: dev2
+    - item: dev3
 
 runwith:
   kafka: false

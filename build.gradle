@@ -58,6 +58,7 @@ dependencies {
     compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.7'
     compile 'org.jetbrains.xodus:xodus-openAPI:1.2.2'
     compile 'org.jetbrains.xodus:xodus-environment:1.2.2'
+    compile 'org.jetbrains.xodus:xodus-entity-store:1.2.2'
 
     testCompile('org.springframework.boot:spring-boot-starter-test')
 }
