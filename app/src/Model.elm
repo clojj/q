@@ -41,6 +41,8 @@ type alias Item =
 type alias Name =
     String
 
+type alias Instant =
+    Int
 
 type ItemState
     = Set Name
@@ -51,6 +53,7 @@ type ItemState
 type alias Toggle =
     { item : Item
     , name : Name
+    , expiry : Instant
     }
 
 
@@ -83,6 +86,7 @@ encodeToggle toggle =
     ENC.object
         [ ( "item", ENC.string toggle.item )
         , ( "name", ENC.string toggle.name )
+        , ( "expiry", ENC.int toggle.expiry )
         ]
 
 
@@ -91,6 +95,7 @@ decodeToggle =
     DECP.decode Toggle
         |> DECP.required "item" DEC.string
         |> DECP.required "name" DEC.string
+        |> DECP.required "expiry" DEC.int
 
 
 encodeWsMsg : WsMsgData -> ENC.Value

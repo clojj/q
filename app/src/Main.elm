@@ -56,13 +56,14 @@ joining name =
     encode 2 (encodeWsMsg (JoinMsg name))
 
 
-setting : String -> String -> String
-setting item name =
+setting : String -> String -> Int -> String
+setting item name expiry =
     let
         setMsg =
             SetMsg
                 { item = item
                 , name = name
+                , expiry = expiry
                 }
     in
         encode 2 (encodeWsMsg setMsg)
@@ -98,13 +99,13 @@ update msg model =
             ( { model | error = Just "Error getting items" }, Cmd.none )
 
         SetItem item name ->
-            ( model, wsMessageOut (setting item name) )
+            ( model, wsMessageOut (setting item name 0) )
 
         InputItem item name ->
             ( { model | items = updateInItems model.items item (\_ -> Setting name) }, Cmd.none )
 
         FreeItem item ->
-            ( { model | items = updateInItems model.items item (\_ -> Free) }, wsMessageOut (setting item "") )
+            ( { model | items = updateInItems model.items item (\_ -> Free) }, wsMessageOut (setting item "" 0) )
 
         WsMessageIn msg ->
             let
