@@ -31,8 +31,9 @@ fetchItems =
 
 type Msg
     = WsMessageIn String
-    | SetItem String String
-    | InputItem String String
+    | SetItem String String Instant
+    | InputName String Instant String
+    | InputExpiry String String Instant
     | FreeItem String
     | AllItems (Result Http.Error (List Toggle))
 
@@ -98,11 +99,14 @@ update msg model =
         AllItems (Err _) ->
             ( { model | error = Just "Error getting items" }, Cmd.none )
 
-        SetItem item name ->
-            ( model, wsMessageOut (setting item name 0) )
+        SetItem item name expiry ->
+            ( model, wsMessageOut (setting item name expiry) )
 
-        InputItem item name ->
-            ( { model | items = updateInItems model.items item (\_ -> Setting name) }, Cmd.none )
+        InputName item expiry name ->
+            ( { model | items = updateInItems model.items item (\_ -> Setting name expiry) }, Cmd.none )
+
+        InputExpiry item name expiry ->
+            ( { model | items = updateInItems model.items item (\_ -> Setting name expiry) }, Cmd.none )
 
         FreeItem item ->
             ( { model | items = updateInItems model.items item (\_ -> Free) }, wsMessageOut (setting item "" 0) )
@@ -127,7 +131,7 @@ update msg model =
                                                 Free
 
                                             _ ->
-                                                Set toggle.name
+                                                Set toggle.name toggle.expiry
                                     )
                           }
                         , Cmd.none
@@ -165,14 +169,17 @@ view model =
                         [ Html.div [] [ Html.text item ]
                         , Html.div []
                             (case state of
-                                Set name ->
-                                    [ Html.text name, button [ onClick (FreeItem item) ] [ text "Freigeben" ] ]
+                                Set name expiry ->
+                                    [ Html.text name, Html.text " Bis: ", Html.text (toString expiry), button [ onClick (FreeItem item) ] [ text "Freigeben" ] ]
 
                                 Free ->
-                                    [ Html.text "[FREI]", button [ onClick (InputItem item "") ] [ text "Belegen" ] ]
+                                    [ Html.text "[FREI]", button [ onClick (InputName item 0 "") ] [ text "Belegen" ] ]
 
-                                Setting name ->
-                                    [ input [ placeholder "Name", onInput (InputItem item), Html.Attributes.value name ] [], button [ onClick (SetItem item name) ] [ text "Belegen" ] ]
+                                Setting name expiry ->
+                                    [ input [ placeholder "Name", onInput (InputName item expiry), Html.Attributes.value name ] []
+                                    , input [ placeholder "Bis", onInput (\value -> InputExpiry item name (Result.withDefault 0 (String.toInt value))), Html.Attributes.value (toString expiry) ] []
+                                    , button [ onClick (SetItem item name expiry) ] [ text "Belegen" ]
+                                    ]
                             )
                         ]
                 )

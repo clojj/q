@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicLong
 import javax.servlet.ServletContextListener
 
 
-class WebsocketHandler(private val storage: Storage) : TextWebSocketHandler() {
+class WebsocketHandler(private val storage: Storage, private val delayService: DelayService) : TextWebSocketHandler() {
 
     private val sessionMap = ConcurrentHashMap<WebSocketSession, User>()
 
@@ -44,11 +44,13 @@ class WebsocketHandler(private val storage: Storage) : TextWebSocketHandler() {
             "set" -> {
                 val item = data.get("item").asText()
                 val name = data.get("name").asText()
+                val expiry = data.get("expiry").asLong()
 
                 sessionMap.getOrPut(session, { User(name) })
-                storage.store(item, name, 0)
+                storage.store(item, name, expiry)
+                delayService.itemCountdown(item, expiry, this)
 
-                val toggle = Toggle(item, name, 0)
+                val toggle = Toggle(item, name, expiry)
                 broadcast(WsMsg("set", toggle))
             }
 
@@ -64,7 +66,7 @@ class WebsocketHandler(private val storage: Storage) : TextWebSocketHandler() {
 
     private fun emit(session: WebSocketSession, msg: WsMsg) = session.sendMessage(TextMessage(jacksonObjectMapper().writeValueAsString(msg)))
 
-    private fun broadcast(msg: WsMsg) = sessionMap.forEach { emit(it.key, msg) }
+    fun broadcast(msg: WsMsg) = sessionMap.forEach { emit(it.key, msg) }
 
     private fun broadcastToOthers(me: WebSocketSession, msg: WsMsg) = sessionMap.filterNot { it.key == me }.forEach { emit(it.key, msg) }
 
@@ -72,9 +74,9 @@ class WebsocketHandler(private val storage: Storage) : TextWebSocketHandler() {
 
 @Configuration
 @EnableWebSocket
-class WSConfig(val storage: Storage) : WebSocketConfigurer {
+class WSConfig(val storage: Storage, val delayService: DelayService) : WebSocketConfigurer {
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
-        registry.addHandler(WebsocketHandler(storage), "/chat")
+        registry.addHandler(WebsocketHandler(storage, delayService), "/chat")
     }
 }
 
@@ -107,13 +109,14 @@ class ThreadPoolTaskSchedulerConfig {
 @Component
 class DelayService(private val threadPoolTaskScheduler: TaskScheduler) {
 
-    fun itemCountdown(item: String, delay: Long) {
-        if (delay > 0) {
-            println("scheduling $item to expire in $delay milliseconds")
+    fun itemCountdown(item: String, expiry: Long, handler: WebsocketHandler) {
+        if (expiry > 0) {
+            println("scheduling $item to expire in $expiry milliseconds")
             threadPoolTaskScheduler.schedule({
                 println("${Thread.currentThread().name}: $item expired")
 //                TODO free item + send to all websocket sessions
-            }, Instant.ofEpochMilli(System.currentTimeMillis() + delay))
+                handler.broadcast(WsMsg("set", Toggle(item, "", 0)))
+            }, Instant.ofEpochMilli(System.currentTimeMillis() + expiry))
         }
     }
 }

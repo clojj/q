@@ -41,13 +41,15 @@ type alias Item =
 type alias Name =
     String
 
+
 type alias Instant =
     Int
 
+
 type ItemState
-    = Set Name
+    = Set Name Instant
     | Free
-    | Setting Name
+    | Setting Name Instant
 
 
 type alias Toggle =
@@ -63,7 +65,7 @@ toStateList toggles =
 
 
 toItemAndState : Toggle -> ItemAndState
-toItemAndState { item, name } =
+toItemAndState { item, name, expiry } =
     { item = item
     , state =
         case name of
@@ -71,7 +73,7 @@ toItemAndState { item, name } =
                 Free
 
             _ ->
-                Set name
+                Set name expiry
     }
 
 
@@ -107,13 +109,14 @@ encodeWsMsg wsMsgData =
                 , ( "data", ENC.string name )
                 ]
 
-        SetMsg { item, name } ->
+        SetMsg { item, name, expiry } ->
             ENC.object
                 [ ( "msgType", ENC.string "set" )
                 , ( "data"
                   , ENC.object
                         [ ( "item", ENC.string item )
                         , ( "name", ENC.string name )
+                        , ( "expiry", ENC.int expiry )
                         ]
                   )
                 ]
