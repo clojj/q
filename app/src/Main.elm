@@ -11,6 +11,8 @@ import Maybe exposing (map)
 import WebSocket as WS
 import Http
 import Model exposing (..)
+import Time exposing (..)
+import Time.Format exposing (format)
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -18,7 +20,9 @@ init _ =
     ( { error = Nothing
       , users = S.empty -- TODO List
       , items = []
+      , time = 0
       }
+      -- TODO also 'join' on page visibility: http://package.elm-lang.org/packages/elm-lang/page-visibility/1.0.1/PageVisibility
     , wsMessageOut (joining "NEW")
     )
 
@@ -31,11 +35,12 @@ fetchItems =
 
 type Msg
     = WsMessageIn String
-    | SetItem String String Instant
-    | InputName String Instant String
-    | InputExpiry String String Instant
+    | SetItem String String Time
+    | InputName String Time String
+    | InputExpiry String String Time
     | FreeItem String
     | AllItems (Result Http.Error (List Toggle))
+    | Tick Time
 
 
 wsURL : String
@@ -57,7 +62,7 @@ joining name =
     encode 2 (encodeWsMsg (JoinMsg name))
 
 
-setting : String -> String -> Int -> String
+setting : String -> String -> Time -> String
 setting item name expiry =
     let
         setMsg =
@@ -92,6 +97,9 @@ updateInItems items item fn =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        Tick newtime ->
+            ( { model | time = newtime }, Cmd.none )
+
         -- fetch
         AllItems (Ok theItems) ->
             ( { model | items = toStateList theItems }, Cmd.none )
@@ -150,7 +158,10 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    WS.listen wsURL WsMessageIn
+    Sub.batch
+        [ WS.listen wsURL WsMessageIn
+        , Time.every second Tick
+        ]
 
 
 
@@ -170,14 +181,28 @@ view model =
                         , Html.div []
                             (case state of
                                 Set name expiry ->
-                                    [ Html.text name, Html.text " Bis: ", Html.text (toString expiry), button [ onClick (FreeItem item) ] [ text "Freigeben" ] ]
+                                    let
+                                        remaining =
+                                            if (expiry /= 0) then
+                                                expiry - model.time
+                                            else
+                                                0
+                                    in
+                                        [ Html.text name
+                                        , Html.text " Bis: "
+                                        , if (remaining > 0) then
+                                            Html.text <| format "%H:%M:%S" <| remaining - 3600000
+                                          else
+                                            Html.text ""
+                                        , button [ onClick (FreeItem item) ] [ text "Freigeben" ]
+                                        ]
 
                                 Free ->
                                     [ Html.text "[FREI]", button [ onClick (InputName item 0 "") ] [ text "Belegen" ] ]
 
                                 Setting name expiry ->
                                     [ input [ placeholder "Name", onInput (InputName item expiry), Html.Attributes.value name ] []
-                                    , input [ placeholder "Bis", onInput (\value -> InputExpiry item name (Result.withDefault 0 (String.toInt value))), Html.Attributes.value (toString expiry) ] []
+                                    , input [ placeholder "Dauer", onInput (\value -> InputExpiry item name (Result.withDefault 0 (String.toFloat value))), Html.Attributes.value (toString expiry) ] []
                                     , button [ onClick (SetItem item name expiry) ] [ text "Belegen" ]
                                     ]
                             )

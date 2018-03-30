@@ -42,15 +42,18 @@ class WebsocketHandler(private val storage: Storage, private val delayService: D
         val text = data.asText()
         when (json.get("msgType").asText()) {
             "set" -> {
-                val item = data.get("item").asText()
                 val name = data.get("name").asText()
-                val expiry = data.get("expiry").asLong()
-
                 sessionMap.getOrPut(session, { User(name) })
-                storage.store(item, name, expiry)
-                delayService.itemCountdown(item, expiry, this)
 
-                val toggle = Toggle(item, name, expiry)
+                val item = data.get("item").asText()
+                var expiry = data.get("expiry").asLong()
+                val toggle: Toggle
+                if (expiry != 0L) {
+                    expiry += System.currentTimeMillis()
+                    delayService.itemCountdown(item, expiry, this)
+                }
+                storage.store(item, name, expiry)
+                toggle = Toggle(item, name, expiry)
                 broadcast(WsMsg("set", toggle))
             }
 
@@ -107,16 +110,16 @@ class ThreadPoolTaskSchedulerConfig {
 }
 
 @Component
-class DelayService(private val threadPoolTaskScheduler: TaskScheduler) {
+class DelayService(private val threadPoolTaskScheduler: TaskScheduler, private val storage: Storage) {
 
     fun itemCountdown(item: String, expiry: Long, handler: WebsocketHandler) {
         if (expiry > 0) {
             println("scheduling $item to expire in $expiry milliseconds")
             threadPoolTaskScheduler.schedule({
                 println("${Thread.currentThread().name}: $item expired")
-//                TODO free item + send to all websocket sessions
+                storage.store(item, "", 0)
                 handler.broadcast(WsMsg("set", Toggle(item, "", 0)))
-            }, Instant.ofEpochMilli(System.currentTimeMillis() + expiry))
+            }, Instant.ofEpochMilli(expiry))
         }
     }
 }

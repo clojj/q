@@ -5,6 +5,7 @@ import List as L
 import Json.Encode as ENC
 import Json.Decode as DEC
 import Json.Decode.Pipeline as DECP
+import Time exposing (..)
 
 
 type alias Flags =
@@ -15,6 +16,7 @@ type alias Model =
     { error : Maybe String
     , users : S.Set String
     , items : List ItemAndState
+    , time : Time
     }
 
 
@@ -42,20 +44,16 @@ type alias Name =
     String
 
 
-type alias Instant =
-    Int
-
-
 type ItemState
-    = Set Name Instant
+    = Set Name Time
     | Free
-    | Setting Name Instant
+    | Setting Name Time
 
 
 type alias Toggle =
     { item : Item
     , name : Name
-    , expiry : Instant
+    , expiry : Time
     }
 
 
@@ -88,7 +86,7 @@ encodeToggle toggle =
     ENC.object
         [ ( "item", ENC.string toggle.item )
         , ( "name", ENC.string toggle.name )
-        , ( "expiry", ENC.int toggle.expiry )
+        , ( "expiry", ENC.float toggle.expiry )
         ]
 
 
@@ -97,7 +95,7 @@ decodeToggle =
     DECP.decode Toggle
         |> DECP.required "item" DEC.string
         |> DECP.required "name" DEC.string
-        |> DECP.required "expiry" DEC.int
+        |> DECP.required "expiry" DEC.float
 
 
 encodeWsMsg : WsMsgData -> ENC.Value
@@ -116,7 +114,7 @@ encodeWsMsg wsMsgData =
                   , ENC.object
                         [ ( "item", ENC.string item )
                         , ( "name", ENC.string name )
-                        , ( "expiry", ENC.int expiry )
+                        , ( "expiry", ENC.float expiry )
                         ]
                   )
                 ]
