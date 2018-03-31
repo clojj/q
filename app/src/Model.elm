@@ -6,6 +6,7 @@ import Json.Encode as ENC
 import Json.Decode as DEC
 import Json.Decode.Pipeline as DECP
 import Time exposing (..)
+import Http
 
 
 type alias Flags =
@@ -18,6 +19,16 @@ type alias Model =
     , items : List ItemAndState
     , time : Time
     }
+
+
+type Msg
+    = WsMessageIn String
+    | SetItem String String Time
+    | InputName String Time String
+    | InputExpiry String String Time
+    | FreeItem String
+    | AllItems (Result Http.Error (List Toggle))
+    | Tick Time
 
 
 

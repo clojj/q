@@ -12,7 +12,6 @@ import WebSocket as WS
 import Http
 import Model exposing (..)
 import Time exposing (..)
-import Time.Format exposing (format)
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -31,16 +30,6 @@ fetchItems : Cmd Msg
 fetchItems =
     Http.send AllItems <|
         Http.get "http://localhost:8080/items" itemsDecoder
-
-
-type Msg
-    = WsMessageIn String
-    | SetItem String String Time
-    | InputName String Time String
-    | InputExpiry String String Time
-    | FreeItem String
-    | AllItems (Result Http.Error (List Toggle))
-    | Tick Time
 
 
 wsURL : String
@@ -168,6 +157,27 @@ subscriptions model =
 ---- VIEW ----
 
 
+toDurationString : Time -> String
+toDurationString duration =
+    let
+        hours =
+            truncate (duration / 3600000)
+
+        durationMinutes =
+            duration - toFloat (hours * 3600000)
+
+        minutes =
+            truncate (durationMinutes / 60000)
+
+        durationSeconds =
+            durationMinutes - toFloat (minutes * 60000)
+
+        seconds =
+            truncate (durationSeconds / 1000)
+    in
+        toString hours ++ " Std " ++ toString minutes ++ " Min " ++ toString seconds ++ " Sek"
+
+
 view : Model -> Html Msg
 view model =
     div []
@@ -189,16 +199,16 @@ view model =
                                                 0
                                     in
                                         [ Html.text name
-                                        , Html.text " Bis: "
+                                        , Html.text " Dauer: "
                                         , if (remaining > 0) then
-                                            Html.text <| format "%H:%M:%S" <| remaining - 3600000
+                                            Html.text <| toDurationString <| remaining
                                           else
                                             Html.text ""
-                                        , button [ onClick (FreeItem item) ] [ text "Freigeben" ]
+                                        , button [ onClick (FreeItem item) ] [ text "Freigabe" ]
                                         ]
 
                                 Free ->
-                                    [ Html.text "[FREI]", button [ onClick (InputName item 0 "") ] [ text "Belegen" ] ]
+                                    [ Html.text "[FREI]", button [ onClick (InputName item 0 "") ] [ text "Belegung" ] ]
 
                                 Setting name expiry ->
                                     [ input [ placeholder "Name", onInput (InputName item expiry), Html.Attributes.value name ] []
