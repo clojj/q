@@ -1,7 +1,7 @@
 module Main exposing (..)
 
 import Html exposing (Html, text, div, h1, h2, h3, img, input, button)
-import Html.Attributes exposing (src, placeholder, disabled)
+import Html.Attributes exposing (src, placeholder, disabled, class)
 import Html.Events exposing (onInput, onClick)
 import Set as S
 import List as L
@@ -12,6 +12,9 @@ import WebSocket as WS
 import Http
 import Model exposing (..)
 import Time exposing (..)
+import Bootstrap.Grid as Grid
+import Bootstrap.Grid.Row as Row
+import Bootstrap.Grid.Col as Col
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -34,7 +37,7 @@ fetchItems =
 
 wsURL : String
 wsURL =
-    "ws://localhost:8080/chat"
+    "ws://localhost:8080/ws"
 
 
 wsMessageOut : String -> Cmd msg
@@ -180,57 +183,62 @@ toDurationString duration =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ h2 [] [ text "Stellwerk" ]
-        , h2 [] [ text "Items" ]
+    Grid.container []
+        [ Grid.row [ Row.centerXs ]
+            [ Grid.col [ Col.xs12 ]
+                [ h3 [] [ text "Stellwerk" ]
+                ]
+            ]
         , Html.div []
             (List.map
                 (\{ item, state } ->
-                    Html.div []
-                        [ Html.div [] [ Html.text item ]
-                        , Html.div []
-                            (case state of
-                                Set name expiry ->
-                                    let
-                                        remaining =
-                                            if (expiry /= 0) then
-                                                expiry - model.time
-                                            else
-                                                0
-                                    in
-                                        [ Html.text name
-                                        , Html.text " Dauer: "
+                    Grid.row []
+                        [ Grid.col [ Col.xs2 ] [ text item ]
+                        , (case state of
+                            Set name expiry ->
+                                let
+                                    remaining =
+                                        if (expiry /= 0) then
+                                            expiry - model.time
+                                        else
+                                            0
+                                in
+                                    Grid.col [ Col.xs10, Col.attrs [ class "bg-danger" ] ]
+                                        [ text name
+                                        , text " Dauer: "
                                         , if (remaining > 0) then
-                                            Html.text <| toDurationString <| remaining
+                                            text <| toDurationString <| remaining
                                           else
-                                            Html.text ""
-                                        , button [ onClick (FreeItem item) ] [ text "Freigabe" ]
+                                            text ""
+                                        , button [ onClick (FreeItem item) ] [ text "freigeben" ]
                                         ]
 
-                                Free ->
-                                    [ Html.text "[FREI]", button [ onClick (InputName item 0 "") ] [ text "Belegung" ] ]
+                            Free ->
+                                Grid.col [ Col.xs10, Col.attrs [ class "bg-success" ] ] [ text "[FREI]", button [ onClick (InputName item 0 "") ] [ text "belegen" ] ]
 
-                                Setting name expiry ->
+                            Setting name expiry ->
+                                Grid.col [ Col.xs10 ]
                                     [ input [ placeholder "Name", onInput (InputName item expiry), Html.Attributes.value name ] []
                                     , input [ placeholder "Dauer", onInput (\value -> InputExpiry item name (Result.withDefault 0 (String.toFloat value))), Html.Attributes.value (toString expiry) ] []
                                     , button [ onClick (SetItem item name expiry) ] [ text "Belegen" ]
                                     ]
-                            )
+                          )
                         ]
                 )
                 model.items
             )
-        , h2 [] [ text "Benutzer" ]
-        , Html.div [] (List.map (\name -> Html.div [] [ Html.text name ]) (S.toList model.users))
-        , h2 [] [ text "Fehler" ]
-        , Html.div []
-            [ case model.error of
-                Just err ->
-                    text err
 
-                Nothing ->
-                    text "Alles Ok"
-            ]
+        -- , h2 [] [ text "Benutzer" ]
+        -- , Html.div [] (List.map (\name -> Html.div [] [ Html.text name ]) (S.toList model.users))
+        -- , h2 [] [ text "Fehler" ]
+        -- , Html.div []
+        --     [ case model.error of
+        --         Just err ->
+        --             text err
+        --
+        --         Nothing ->
+        --             text "Alles Ok"
+        --     ]
         ]
 
 

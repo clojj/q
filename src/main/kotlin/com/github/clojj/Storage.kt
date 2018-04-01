@@ -43,7 +43,7 @@ class Storage(private var config: SchalterConfig) : ServletContextListener {
         entityStore.close()
     }
 
-    val entityStore = PersistentEntityStores.newInstance(".entitystore")
+    val entityStore = PersistentEntityStores.newInstance(".entitystore")!!
 
 
     @PostConstruct
