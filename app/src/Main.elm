@@ -15,6 +15,7 @@ import Time exposing (..)
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Row as Row
 import Bootstrap.Grid.Col as Col
+import Bootstrap.Utilities.Spacing as Spc
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -165,11 +166,23 @@ toDurationString duration =
         hours =
             truncate (duration / 3600000)
 
+        hh =
+            if hours > 0 then
+                toString hours ++ " Std "
+            else
+                ""
+
         durationMinutes =
             duration - toFloat (hours * 3600000)
 
         minutes =
             truncate (durationMinutes / 60000)
+
+        mm =
+            if minutes > 0 then
+                toString minutes ++ " Min "
+            else
+                ""
 
         durationSeconds =
             durationMinutes - toFloat (minutes * 60000)
@@ -177,7 +190,7 @@ toDurationString duration =
         seconds =
             truncate (durationSeconds / 1000)
     in
-        toString hours ++ " Std " ++ toString minutes ++ " Min " ++ toString seconds ++ " Sek"
+        hh ++ mm ++ toString seconds ++ " Sek"
 
 
 view : Model -> Html Msg
@@ -206,7 +219,7 @@ view model =
                         label =
                             Grid.col [ Col.xs3 ] [ text item ]
                     in
-                        Grid.row [ Row.attrs [ class status ] ]
+                        Grid.row [ Row.attrs [ class status, Spc.mt3 ], Row.middleXs ]
                             (case state of
                                 Set name expiry ->
                                     let
@@ -224,22 +237,21 @@ view model =
                                               else
                                                 text ""
                                             ]
-                                        , Grid.col [ Col.xs3 ] [ button [ onClick (FreeItem item) ] [ text "freigeben" ] ]
+                                        , Grid.col [ Col.xs3 ] [ button [ onClick (FreeItem item), class "btn btn-default bg-primary" ] [ text "freigabe" ] ]
                                         ]
 
                                 Free ->
                                     [ label
                                     , Grid.col [ Col.xs3 ] [ text "frei" ]
                                     , Grid.col [ Col.xs3 ] [ text "" ]
-                                    , Grid.col [ Col.xs3 ] [ button [ onClick (InputName item "" "") ] [ text "belegen" ] ]
+                                    , Grid.col [ Col.xs3 ] [ button [ onClick (InputName item "" ""), class "btn btn-default bg-primary" ] [ text "belegen" ] ]
                                     ]
 
                                 Setting name expiry ->
-                                    [ Grid.col [ Col.xs12 ]
-                                        [ input [ placeholder "Name", onInput (InputName item expiry) ] []
-                                        , input [ placeholder "Dauer (hh:mm)", onInput (InputExpiry item name) ] []
-                                        , button [ onClick (SetItem item name (parseDuration expiry)) ] [ text "Belegen" ]
-                                        ]
+                                    [ label
+                                    , Grid.col [ Col.xs3 ] [ input [ placeholder "Name", onInput (InputName item expiry) ] [] ]
+                                    , Grid.col [ Col.xs3 ] [ input [ placeholder "Dauer [Stunden:]Minuten", onInput (InputExpiry item name) ] [] ]
+                                    , Grid.col [ Col.xs3 ] [ button [ onClick (SetItem item name (parseDuration expiry)), class "btn btn-default bg-primary" ] [ text "belegen" ] ]
                                     ]
                             )
                 )
