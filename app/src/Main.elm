@@ -160,39 +160,6 @@ subscriptions model =
 ---- VIEW ----
 
 
-toDurationString : Time -> String
-toDurationString duration =
-    let
-        hours =
-            truncate (duration / 3600000)
-
-        hh =
-            if hours > 0 then
-                toString hours ++ " Std "
-            else
-                ""
-
-        durationMinutes =
-            duration - toFloat (hours * 3600000)
-
-        minutes =
-            truncate (durationMinutes / 60000)
-
-        mm =
-            if minutes > 0 then
-                toString minutes ++ " Min "
-            else
-                ""
-
-        durationSeconds =
-            durationMinutes - toFloat (minutes * 60000)
-
-        seconds =
-            truncate (durationSeconds / 1000)
-    in
-        hh ++ mm ++ toString seconds ++ " Sek"
-
-
 view : Model -> Html Msg
 view model =
     Grid.container []
@@ -269,6 +236,39 @@ view model =
                     text ""
             ]
         ]
+
+
+toDurationString : Time -> String
+toDurationString duration =
+    let
+        hours =
+            truncate (duration / 3600000)
+
+        hh =
+            if hours > 0 then
+                toString hours ++ " Std "
+            else
+                ""
+
+        durationMinutes =
+            duration - toFloat (hours * 3600000)
+
+        minutes =
+            truncate (durationMinutes / 60000)
+
+        mm =
+            if minutes > 0 then
+                toString minutes ++ " Min "
+            else
+                ""
+
+        durationSeconds =
+            durationMinutes - toFloat (minutes * 60000)
+
+        seconds =
+            truncate (durationSeconds / 1000)
+    in
+        hh ++ mm ++ toString seconds ++ " Sek"
 
 
 parseDuration : String -> Time
