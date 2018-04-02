@@ -37,6 +37,7 @@ type Msg
     | FreeItem Item
     | AllItems (Result Http.Error (List Toggle))
     | Tick Time
+    | WindowFocus String
 
 
 

@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Html exposing (Html, text, div, h1, h2, h3, img, input, button)
 import Html.Attributes exposing (src, placeholder, disabled, class)
@@ -28,6 +28,9 @@ init _ =
       -- TODO also 'join' on page visibility: http://package.elm-lang.org/packages/elm-lang/page-visibility/1.0.1/PageVisibility
     , wsMessageOut (joining "NEW")
     )
+
+
+port windowFocus : (String -> msg) -> Sub msg
 
 
 fetchItems : Cmd Msg
@@ -90,6 +93,9 @@ setItemState items item newState =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        WindowFocus _ ->
+            ( model, wsMessageOut (joining "NEW") )
+
         Tick newtime ->
             ( { model | time = newtime }, Cmd.none )
 
@@ -153,6 +159,7 @@ subscriptions model =
     Sub.batch
         [ WS.listen wsURL WsMessageIn
         , Time.every second Tick
+        , windowFocus WindowFocus
         ]
 
 
