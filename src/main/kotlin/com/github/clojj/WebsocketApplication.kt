@@ -20,14 +20,24 @@ import org.springframework.web.socket.handler.TextWebSocketHandler
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
+import javax.annotation.PostConstruct
 import javax.servlet.ServletContextListener
 
-
+@Component
 class WebsocketHandler(private val storage: Storage, private val delayService: DelayService) : TextWebSocketHandler() {
 
     private val sessionMap = ConcurrentHashMap<WebSocketSession, User>()
 
     private var uids = AtomicLong(0)
+
+    @PostConstruct
+    fun init() {
+        storage.allItems().forEach({ toggle: Toggle ->
+            if (toggle.expiry > 0) {
+                delayService.itemCountdown(toggle.item, toggle.expiry, this)
+            }
+        })
+    }
 
     @Throws(Exception::class)
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
