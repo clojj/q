@@ -21,12 +21,20 @@ type alias Model =
     }
 
 
+type alias Item =
+    String
+
+
+type alias Name =
+    String
+
+
 type Msg
     = WsMessageIn String
-    | SetItem String String Time
-    | InputName String Time String
-    | InputExpiry String String Time
-    | FreeItem String
+    | SetItem Item Name Time
+    | InputName Item String Name
+    | InputExpiry Item Name String
+    | FreeItem Item
     | AllItems (Result Http.Error (List Toggle))
     | Tick Time
 
@@ -47,18 +55,10 @@ type WsMsgData
     | AllItemsMsg (List Toggle)
 
 
-type alias Item =
-    String
-
-
-type alias Name =
-    String
-
-
 type ItemState
     = Set Name Time
     | Free
-    | Setting Name Time
+    | Setting Name String
 
 
 type alias Toggle =
@@ -66,6 +66,10 @@ type alias Toggle =
     , name : Name
     , expiry : Time
     }
+
+
+
+-- merge the next 2 functions
 
 
 toStateList : List Toggle -> List ItemAndState

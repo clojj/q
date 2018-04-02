@@ -67,12 +67,12 @@ setting item name expiry =
         encode 2 (encodeWsMsg setMsg)
 
 
-updateInItems : List ItemAndState -> Item -> (ItemState -> ItemState) -> List ItemAndState
-updateInItems items item fn =
+setItemState : List ItemAndState -> Item -> ItemState -> List ItemAndState
+setItemState items item newState =
     L.map
         (\itemAndState ->
             if (item == itemAndState.item) then
-                { itemAndState | state = fn itemAndState.state }
+                { itemAndState | state = newState }
             else
                 itemAndState
         )
@@ -103,13 +103,13 @@ update msg model =
             ( model, wsMessageOut (setting item name expiry) )
 
         InputName item expiry name ->
-            ( { model | items = updateInItems model.items item (\_ -> Setting name expiry) }, Cmd.none )
+            ( { model | items = setItemState model.items item (Setting name expiry) }, Cmd.none )
 
         InputExpiry item name expiry ->
-            ( { model | items = updateInItems model.items item (\_ -> Setting name expiry) }, Cmd.none )
+            ( { model | items = setItemState model.items item (Setting name expiry) }, Cmd.none )
 
         FreeItem item ->
-            ( { model | items = updateInItems model.items item (\_ -> Free) }, wsMessageOut (setting item "" 0) )
+            ( { model | items = setItemState model.items item Free }, wsMessageOut (setting item "" 0) )
 
         WsMessageIn msg ->
             let
@@ -123,15 +123,14 @@ update msg model =
                     Ok (SetMsg toggle) ->
                         ( { model
                             | items =
-                                updateInItems model.items
+                                setItemState model.items
                                     toggle.item
-                                    (\_ ->
-                                        case toggle.name of
-                                            "" ->
-                                                Free
+                                    (case toggle.name of
+                                        "" ->
+                                            Free
 
-                                            _ ->
-                                                Set toggle.name toggle.expiry
+                                        _ ->
+                                            Set toggle.name toggle.expiry
                                     )
                           }
                         , Cmd.none
@@ -192,54 +191,104 @@ view model =
         , Html.div []
             (List.map
                 (\{ item, state } ->
-                    Grid.row []
-                        [ Grid.col [ Col.xs2 ] [ text item ]
-                        , (case state of
-                            Set name expiry ->
-                                let
-                                    remaining =
-                                        if (expiry /= 0) then
-                                            expiry - model.time
-                                        else
-                                            0
-                                in
-                                    Grid.col [ Col.xs10, Col.attrs [ class "bg-danger" ] ]
-                                        [ text name
-                                        , text " Dauer: "
-                                        , if (remaining > 0) then
-                                            text <| toDurationString <| remaining
-                                          else
-                                            text ""
-                                        , button [ onClick (FreeItem item) ] [ text "freigeben" ]
+                    let
+                        status =
+                            case state of
+                                Set _ _ ->
+                                    "bg-danger"
+
+                                Free ->
+                                    "bg-success"
+
+                                _ ->
+                                    "bg-warning"
+
+                        label =
+                            Grid.col [ Col.xs3 ] [ text item ]
+                    in
+                        Grid.row [ Row.attrs [ class status ] ]
+                            (case state of
+                                Set name expiry ->
+                                    let
+                                        remaining =
+                                            if (expiry /= 0 && model.time > 0) then
+                                                expiry - model.time
+                                            else
+                                                0
+                                    in
+                                        [ label
+                                        , Grid.col [ Col.xs3 ] [ text name ]
+                                        , Grid.col [ Col.xs3 ]
+                                            [ if (remaining > 0) then
+                                                text <| toDurationString <| remaining
+                                              else
+                                                text ""
+                                            ]
+                                        , Grid.col [ Col.xs3 ] [ button [ onClick (FreeItem item) ] [ text "freigeben" ] ]
                                         ]
 
-                            Free ->
-                                Grid.col [ Col.xs10, Col.attrs [ class "bg-success" ] ] [ text "[FREI]", button [ onClick (InputName item 0 "") ] [ text "belegen" ] ]
-
-                            Setting name expiry ->
-                                Grid.col [ Col.xs10 ]
-                                    [ input [ placeholder "Name", onInput (InputName item expiry), Html.Attributes.value name ] []
-                                    , input [ placeholder "Dauer", onInput (\value -> InputExpiry item name (Result.withDefault 0 (String.toFloat value))), Html.Attributes.value (toString expiry) ] []
-                                    , button [ onClick (SetItem item name expiry) ] [ text "Belegen" ]
+                                Free ->
+                                    [ label
+                                    , Grid.col [ Col.xs3 ] [ text "frei" ]
+                                    , Grid.col [ Col.xs3 ] [ text "" ]
+                                    , Grid.col [ Col.xs3 ] [ button [ onClick (InputName item "" "") ] [ text "belegen" ] ]
                                     ]
-                          )
-                        ]
+
+                                Setting name expiry ->
+                                    [ Grid.col [ Col.xs12 ]
+                                        [ input [ placeholder "Name", onInput (InputName item expiry) ] []
+                                        , input [ placeholder "Dauer (hh:mm)", onInput (InputExpiry item name) ] []
+                                        , button [ onClick (SetItem item name (parseDuration expiry)) ] [ text "Belegen" ]
+                                        ]
+                                    ]
+                            )
                 )
                 model.items
             )
 
         -- , h2 [] [ text "Benutzer" ]
         -- , Html.div [] (List.map (\name -> Html.div [] [ Html.text name ]) (S.toList model.users))
-        -- , h2 [] [ text "Fehler" ]
-        -- , Html.div []
-        --     [ case model.error of
-        --         Just err ->
-        --             text err
-        --
-        --         Nothing ->
-        --             text "Alles Ok"
-        --     ]
+        , Html.div []
+            [ case model.error of
+                Just err ->
+                    h3 [] [ text err ]
+
+                Nothing ->
+                    text ""
+            ]
         ]
+
+
+parseDuration : String -> Time
+parseDuration input =
+    case input of
+        "" ->
+            0
+
+        str ->
+            let
+                duration =
+                    String.split ":" str
+            in
+                case duration of
+                    [ hh, mm ] ->
+                        let
+                            hhTime =
+                                3600000 * (Result.withDefault 0 (String.toFloat hh))
+
+                            mmTime =
+                                60000 * Result.withDefault 0 (String.toFloat mm)
+                        in
+                            hhTime + mmTime
+
+                    [ mm ] ->
+                        60000 * Result.withDefault 0 (String.toFloat mm)
+
+                    [] ->
+                        0
+
+                    _ :: _ ->
+                        0
 
 
 
