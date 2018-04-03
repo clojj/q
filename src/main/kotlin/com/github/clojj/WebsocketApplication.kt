@@ -7,6 +7,7 @@ import org.springframework.boot.runApplication
 import org.springframework.boot.web.servlet.ServletListenerRegistrationBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Scope
 import org.springframework.scheduling.TaskScheduler
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
 import org.springframework.stereotype.Component
@@ -23,6 +24,7 @@ import java.util.concurrent.atomic.AtomicLong
 import javax.annotation.PostConstruct
 import javax.servlet.ServletContextListener
 
+@Scope("singleton")
 @Component
 class WebsocketHandler(private val storage: Storage, private val delayService: DelayService) : TextWebSocketHandler() {
 
@@ -87,9 +89,9 @@ class WebsocketHandler(private val storage: Storage, private val delayService: D
 
 @Configuration
 @EnableWebSocket
-class WSConfig(val storage: Storage, val delayService: DelayService) : WebSocketConfigurer {
+class WSConfig(val websocketHandler: WebsocketHandler) : WebSocketConfigurer {
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
-        registry.addHandler(WebsocketHandler(storage, delayService), "/ws")
+        registry.addHandler(websocketHandler, "/ws")
     }
 }
 
