@@ -34,7 +34,7 @@ type Msg
     | SetItem Item Name Time
     | InputName Item String Name
     | InputExpiry Item Name String
-    | FreeItem Item
+    | FreeItem Item Name
     | AllItems (Result Http.Error (List Toggle))
     | Tick Time
     | WindowFocus String
@@ -58,7 +58,6 @@ type WsMsgData
 
 type ItemState
     = Set Name Time
-    | Free
     | Setting Name String
 
 
@@ -81,13 +80,7 @@ toStateList toggles =
 toItemAndState : Toggle -> ItemAndState
 toItemAndState { item, name, expiry } =
     { item = item
-    , state =
-        case name of
-            "" ->
-                Free
-
-            _ ->
-                Set name expiry
+    , state = Set name expiry
     }
 
 

@@ -8,7 +8,6 @@ import org.springframework.boot.web.servlet.ServletListenerRegistrationBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Scope
-import org.springframework.scheduling.TaskScheduler
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.CloseStatus
@@ -18,28 +17,14 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 import org.springframework.web.socket.handler.TextWebSocketHandler
-import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicLong
-import javax.annotation.PostConstruct
 import javax.servlet.ServletContextListener
 
 @Scope("singleton")
 @Component
-class WebsocketHandler(private val storage: Storage, private val delayService: DelayService) : TextWebSocketHandler() {
+class WebsocketHandler(private val storage: Storage) : TextWebSocketHandler() {
 
     private val sessionMap = ConcurrentHashMap<WebSocketSession, User>()
-
-    private var uids = AtomicLong(0)
-
-    @PostConstruct
-    fun init() {
-        storage.allItems().forEach({ toggle: Toggle ->
-            if (toggle.expiry > 0) {
-                delayService.itemCountdown(toggle.item, toggle.expiry, this)
-            }
-        })
-    }
 
     @Throws(Exception::class)
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
@@ -62,7 +47,6 @@ class WebsocketHandler(private val storage: Storage, private val delayService: D
                 val toggle: Toggle
                 if (expiry != 0L) {
                     expiry += System.currentTimeMillis()
-                    delayService.itemCountdown(item, expiry, this)
                 }
                 storage.store(item, name, expiry)
                 toggle = Toggle(item, name, expiry)
@@ -118,20 +102,5 @@ class ThreadPoolTaskSchedulerConfig {
         threadPoolTaskScheduler.poolSize = 5
         threadPoolTaskScheduler.threadNamePrefix = "ThreadPoolTaskScheduler"
         return threadPoolTaskScheduler
-    }
-}
-
-@Component
-class DelayService(private val threadPoolTaskScheduler: TaskScheduler, private val storage: Storage) {
-
-    fun itemCountdown(item: String, expiry: Long, handler: WebsocketHandler) {
-        if (expiry > 0) {
-            println("scheduling $item to expire in $expiry milliseconds")
-            threadPoolTaskScheduler.schedule({
-                println("${Thread.currentThread().name}: $item expired")
-                storage.store(item, "", 0)
-                handler.broadcast(WsMsg("set", Toggle(item, "", 0)))
-            }, Instant.ofEpochMilli(expiry))
-        }
     }
 }

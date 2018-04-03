@@ -115,8 +115,8 @@ update msg model =
         InputExpiry item name expiry ->
             ( { model | items = setItemState model.items item (Setting name expiry) }, Cmd.none )
 
-        FreeItem item ->
-            ( { model | items = setItemState model.items item Free }, wsMessageOut (setting item "" 0) )
+        FreeItem item name ->
+            ( { model | items = setItemState model.items item (Set name model.time) }, wsMessageOut (setting item "" 0) )
 
         WsMessageIn msg ->
             let
@@ -132,13 +132,7 @@ update msg model =
                             | items =
                                 setItemState model.items
                                     toggle.item
-                                    (case toggle.name of
-                                        "" ->
-                                            Free
-
-                                        _ ->
-                                            Set toggle.name toggle.expiry
-                                    )
+                                    (Set toggle.name toggle.expiry)
                           }
                         , Cmd.none
                         )
@@ -179,54 +173,66 @@ view model =
             (List.map
                 (\{ item, state } ->
                     let
-                        status =
+                        remaining =
                             case state of
-                                Set _ _ ->
-                                    "bg-danger"
+                                Set _ expiry ->
+                                    if (expiry /= 0 && model.time > 0) then
+                                        expiry - model.time
+                                    else
+                                        0
 
-                                Free ->
-                                    "bg-success"
+                                Setting _ _ ->
+                                    0
+
+                        status =
+                            case model.time of
+                                0 ->
+                                    "bg-info"
 
                                 _ ->
-                                    "bg-warning"
+                                    case state of
+                                        Set _ _ ->
+                                            if remaining > 0 then
+                                                "bg-danger"
+                                            else
+                                                "bg-success"
+
+                                        Setting _ _ ->
+                                            "bg-warning"
 
                         label =
                             Grid.col [ Col.xs3 ] [ text item ]
                     in
                         Grid.row [ Row.attrs [ class status, Spc.mt3 ], Row.middleXs ]
-                            (case state of
-                                Set name expiry ->
-                                    let
-                                        remaining =
-                                            if (expiry /= 0 && model.time > 0) then
-                                                expiry - model.time
+                            (case model.time of
+                                0 ->
+                                    [ label
+                                    , Grid.col [ Col.xs9 ] [ text "Initialisierung..." ]
+                                    ]
+
+                                _ ->
+                                    (case state of
+                                        Set name expiry ->
+                                            if remaining > 0 then
+                                                [ label
+                                                , Grid.col [ Col.xs3 ] [ text name ]
+                                                , Grid.col [ Col.xs3 ] [ text <| toDurationString <| remaining ]
+                                                , Grid.col [ Col.xs3 ] [ button [ onClick (FreeItem item name), class "btn btn-default bg-primary" ] [ text "freigabe" ] ]
+                                                ]
                                             else
-                                                0
-                                    in
-                                        [ label
-                                        , Grid.col [ Col.xs3 ] [ text name ]
-                                        , Grid.col [ Col.xs3 ]
-                                            [ if (remaining > 0) then
-                                                text <| toDurationString <| remaining
-                                              else
-                                                text ""
+                                                [ label
+                                                , Grid.col [ Col.xs3 ] [ text "frei" ]
+                                                , Grid.col [ Col.xs3 ] [ text "" ]
+                                                , Grid.col [ Col.xs3 ] [ button [ onClick (InputName item "" ""), class "btn btn-default bg-primary" ] [ text "belegen" ] ]
+                                                ]
+
+                                        Setting name expiry ->
+                                            [ label
+                                            , Grid.col [ Col.xs3 ] [ input [ placeholder "Name", onInput (InputName item expiry) ] [] ]
+                                            , Grid.col [ Col.xs3 ] [ input [ placeholder "Dauer [Stunden:]Minuten", onInput (InputExpiry item name) ] [] ]
+                                            , Grid.col [ Col.xs3 ] [ button [ onClick (SetItem item name (parseDuration expiry)), class "btn btn-default bg-primary" ] [ text "belegen" ] ]
                                             ]
-                                        , Grid.col [ Col.xs3 ] [ button [ onClick (FreeItem item), class "btn btn-default bg-primary" ] [ text "freigabe" ] ]
-                                        ]
-
-                                Free ->
-                                    [ label
-                                    , Grid.col [ Col.xs3 ] [ text "frei" ]
-                                    , Grid.col [ Col.xs3 ] [ text "" ]
-                                    , Grid.col [ Col.xs3 ] [ button [ onClick (InputName item "" ""), class "btn btn-default bg-primary" ] [ text "belegen" ] ]
-                                    ]
-
-                                Setting name expiry ->
-                                    [ label
-                                    , Grid.col [ Col.xs3 ] [ input [ placeholder "Name", onInput (InputName item expiry) ] [] ]
-                                    , Grid.col [ Col.xs3 ] [ input [ placeholder "Dauer [Stunden:]Minuten", onInput (InputExpiry item name) ] [] ]
-                                    , Grid.col [ Col.xs3 ] [ button [ onClick (SetItem item name (parseDuration expiry)), class "btn btn-default bg-primary" ] [ text "belegen" ] ]
-                                    ]
+                                    )
                             )
                 )
                 model.items
