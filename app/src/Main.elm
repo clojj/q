@@ -228,8 +228,8 @@ view model =
 
                                         Setting name expiry ->
                                             [ label
-                                            , Grid.col [ Col.xs3 ] [ input [ placeholder "Name", onInput (InputName item expiry) ] [] ]
-                                            , Grid.col [ Col.xs3 ] [ input [ placeholder "Dauer [Stunden:]Minuten", onInput (InputExpiry item name) ] [] ]
+                                            , Grid.col [ Col.xs3 ] [ input [ placeholder "Name", onChange (InputName item expiry) ] [] ]
+                                            , Grid.col [ Col.xs3 ] [ input [ placeholder "Dauer [Stunden:]Minuten", onChange (InputExpiry item name) ] [] ]
                                             , Grid.col [ Col.xs3 ] [ button [ onClick (SetItem item name (parseDuration expiry)), class "btn btn-default bg-primary" ] [ text "belegen" ] ]
                                             ]
                                     )
@@ -249,6 +249,11 @@ view model =
                     text ""
             ]
         ]
+
+
+onChange : (String -> msg) -> Html.Attribute msg
+onChange msgCreator =
+    Html.Events.on "change" (Json.Decode.map msgCreator Html.Events.targetValue)
 
 
 toDurationString : Time -> String
@@ -298,8 +303,11 @@ parseDuration input =
                 case duration of
                     [ hh, mm ] ->
                         let
+                            hhValid =
+                                min (Result.withDefault 0 (String.toFloat hh)) 8
+
                             hhTime =
-                                3600000 * (Result.withDefault 0 (String.toFloat hh))
+                                3600000 * hhValid
 
                             mmTime =
                                 60000 * Result.withDefault 0 (String.toFloat mm)
