@@ -32,7 +32,7 @@ all =
 
                             Err err ->
                                 Expect.fail err
-            , test "hhmmss" <|
+            , test "hhmmss full" <|
                 \_ ->
                     let
                         duration =
@@ -42,5 +42,15 @@ all =
                             toDurationString duration
                     in
                         Expect.equal durationString "1 Std 2 Min 5 Sek"
+            , test "hhmmss minutes" <|
+                \_ ->
+                    let
+                        duration =
+                            120000
+
+                        durationString =
+                            toDurationString duration
+                    in
+                        Expect.equal durationString "2 Min 0 Sek"
             ]
         ]
