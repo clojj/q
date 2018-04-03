@@ -41,6 +41,7 @@ class Storage(private var config: SchalterConfig) : ServletContextListener {
 
     override fun contextDestroyed(sce: ServletContextEvent?) {
         // TODO test with actuator shutdown ?
+        println("CLOSING ENTITY STORE")
         entityStore.close()
     }
 

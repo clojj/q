@@ -8,7 +8,6 @@ import org.springframework.boot.web.servlet.ServletListenerRegistrationBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Scope
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
@@ -91,16 +90,4 @@ class WebsocketApplication(val storage: Storage) {
 
 fun main(args: Array<String>) {
     runApplication<WebsocketApplication>(*args)
-}
-
-@Configuration
-class ThreadPoolTaskSchedulerConfig {
-
-    @Bean
-    fun threadPoolTaskScheduler(): ThreadPoolTaskScheduler {
-        val threadPoolTaskScheduler = ThreadPoolTaskScheduler()
-        threadPoolTaskScheduler.poolSize = 5
-        threadPoolTaskScheduler.threadNamePrefix = "ThreadPoolTaskScheduler"
-        return threadPoolTaskScheduler
-    }
 }
