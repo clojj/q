@@ -216,7 +216,7 @@ view model =
                                             if remaining > 0 then
                                                 [ label
                                                 , Grid.col [ Col.xs3 ] [ text name ]
-                                                , Grid.col [ Col.xs3 ] [ text <| toDurationString <| remaining ]
+                                                , Grid.col [ Col.xs3, Col.attrs [ class "text-right" ] ] [ text <| toDurationString <| remaining ]
                                                 , Grid.col [ Col.xs3 ] [ button [ onClick (FreeItem item name), class "btn btn-default bg-primary" ] [ text "freigabe" ] ]
                                                 ]
                                             else
@@ -304,18 +304,25 @@ parseDuration input =
                     [ hh, mm ] ->
                         let
                             hhValid =
-                                min (Result.withDefault 0 (String.toFloat hh)) 8
+                                min 8 <| Result.withDefault 0 (String.toFloat hh)
 
                             hhTime =
                                 3600000 * hhValid
 
+                            mmValid =
+                                min 59 <| Result.withDefault 0 (String.toFloat mm)
+
                             mmTime =
-                                60000 * Result.withDefault 0 (String.toFloat mm)
+                                60000 * mmValid
                         in
                             hhTime + mmTime
 
                     [ mm ] ->
-                        60000 * Result.withDefault 0 (String.toFloat mm)
+                        let
+                            mmValid =
+                                min 59 <| Result.withDefault 0 (String.toFloat mm)
+                        in
+                            60000 * mmValid
 
                     [] ->
                         0
