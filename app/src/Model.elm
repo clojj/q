@@ -7,6 +7,7 @@ import Json.Decode as DEC
 import Json.Decode.Pipeline as DECP
 import Time exposing (..)
 import Http
+import Dom
 
 
 type alias Flags =
@@ -29,15 +30,20 @@ type alias Name =
     String
 
 
+type alias Id =
+    String
+
+
 type Msg
     = WsMessageIn String
     | SetItem Item Name Time
-    | InputName Item String Name
-    | InputExpiry Item Name String
+    | InputName Item String Id Name
+    | InputExpiry Item Name Id String
     | FreeItem Item Name
     | AllItems (Result Http.Error (List Toggle))
     | Tick Time
     | WindowFocus String
+    | FocusResult (Result Dom.Error ())
 
 
 

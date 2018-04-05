@@ -2,7 +2,7 @@ port module Main exposing (..)
 
 import Html exposing (Html, text, div, h1, h2, h3, img, input, button)
 import Html.Attributes exposing (src, placeholder, disabled, class, id)
-import Html.Events exposing (onInput, onClick)
+import Html.Events exposing (onInput, onClick, on, keyCode)
 import Dom exposing (focus)
 import Set as S
 import List as L
@@ -19,6 +19,7 @@ import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Row as Row
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Utilities.Spacing as Spc
+import Task
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -96,6 +97,14 @@ setItemState items item newState =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        FocusResult result ->
+            case result of
+                Err (Dom.NotFound id) ->
+                    { model | error = Just ("Could not find dom id: " ++ id) } ! []
+
+                Ok () ->
+                    { model | error = Nothing } ! []
+
         WindowFocus _ ->
             ( model, wsMessageOut (joining "NEW") )
 
@@ -112,11 +121,29 @@ update msg model =
         SetItem item name expiry ->
             ( model, wsMessageOut (setting item name expiry) )
 
-        InputName item expiry name ->
-            ( { model | items = setItemState model.items item (Setting name expiry) }, Cmd.none )
+        InputName item expiry domId name ->
+            let
+                cmd =
+                    case domId of
+                        "" ->
+                            Cmd.none
 
-        InputExpiry item name expiry ->
-            ( { model | items = setItemState model.items item (Setting name expiry) }, Cmd.none )
+                        _ ->
+                            Task.attempt FocusResult (focus domId)
+            in
+                { model | items = setItemState model.items item (Setting name expiry) } ! [ cmd ]
+
+        InputExpiry item name domId expiry ->
+            let
+                cmd =
+                    case domId of
+                        "" ->
+                            Cmd.none
+
+                        _ ->
+                            Task.attempt FocusResult (focus domId)
+            in
+                { model | items = setItemState model.items item (Setting name expiry) } ! [ cmd ]
 
         FreeItem item name ->
             ( { model | items = setItemState model.items item (Set name model.time) }, wsMessageOut (setting item "" 0) )
@@ -231,13 +258,13 @@ view model =
                                                             [ label
                                                             , Block.text [] [ text "frei" ]
                                                             , Block.text [] [ text "" ]
-                                                            , Block.custom <| button [ onClick (InputName item "" ""), class "btn btn-default bg-primary" ] [ text "belegen" ]
+                                                            , Block.custom <| button [ onClick (InputName item "" "inputName" ""), class "btn btn-default bg-primary" ] [ text "belegen" ]
                                                             ]
 
                                                     Setting name expiry ->
                                                         [ label
-                                                        , Block.text [] [ input [ id "inputName", placeholder "Name", onChange (InputName item expiry) ] [] ]
-                                                        , Block.text [] [ input [ id "inputDauer", placeholder "Dauer [Stunden:]Minuten", onChange (InputExpiry item name) ] [] ]
+                                                        , Block.text [] [ input [ id "inputName", placeholder "Name", onInput (InputName item expiry ""), onEnter (InputExpiry item name "inputDauer" expiry) ] [] ]
+                                                        , Block.text [] [ input [ id "inputDauer", placeholder "Dauer [Stunden:]Minuten", onInput (InputExpiry item name ""), onEnter (SetItem item name (parseDuration expiry)) ] [] ]
                                                         , Block.custom <| button [ onClick (SetItem item name (parseDuration expiry)), class "btn btn-default bg-primary" ] [ text "belegen" ]
                                                         ]
                                                 )
@@ -260,6 +287,18 @@ view model =
                     text ""
             ]
         ]
+
+
+onEnter : Msg -> Html.Attribute Msg
+onEnter msg =
+    let
+        isEnter code =
+            if code == 13 then
+                Json.Decode.succeed msg
+            else
+                Json.Decode.fail "not ENTER"
+    in
+        on "keydown" (Json.Decode.andThen isEnter keyCode)
 
 
 onChange : (String -> msg) -> Html.Attribute msg
