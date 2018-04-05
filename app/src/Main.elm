@@ -1,8 +1,9 @@
 port module Main exposing (..)
 
 import Html exposing (Html, text, div, h1, h2, h3, img, input, button)
-import Html.Attributes exposing (src, placeholder, disabled, class)
+import Html.Attributes exposing (src, placeholder, disabled, class, id)
 import Html.Events exposing (onInput, onClick)
+import Dom exposing (focus)
 import Set as S
 import List as L
 import Json.Encode exposing (encode, Value, string, int, float, bool, list, object)
@@ -12,6 +13,8 @@ import WebSocket as WS
 import Http
 import Model exposing (..)
 import Time exposing (..)
+import Bootstrap.Card as Card
+import Bootstrap.Card.Block as Block
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Row as Row
 import Bootstrap.Grid.Col as Col
@@ -201,39 +204,47 @@ view model =
                                             "bg-warning"
 
                         label =
-                            Grid.col [ Col.xs3 ] [ text item ]
+                            Block.titleH4 [] [ text item ]
                     in
-                        Grid.row [ Row.attrs [ class status, Spc.mt3 ], Row.middleXs ]
-                            (case model.time of
-                                0 ->
-                                    [ label
-                                    , Grid.col [ Col.xs9 ] [ text "Initialisierung..." ]
-                                    ]
-
-                                _ ->
-                                    (case state of
-                                        Set name expiry ->
-                                            if remaining > 0 then
+                        Grid.row [ Row.attrs [ Spc.mt3 ], Row.middleXs ]
+                            [ Grid.col [ Col.xs12 ]
+                                [ Card.config [ Card.attrs [ class status ] ]
+                                    |> Card.block []
+                                        (case model.time of
+                                            0 ->
                                                 [ label
-                                                , Grid.col [ Col.xs3 ] [ text name ]
-                                                , Grid.col [ Col.xs3, Col.attrs [ class "text-right" ] ] [ text <| toDurationString <| remaining ]
-                                                , Grid.col [ Col.xs3 ] [ button [ onClick (FreeItem item name), class "btn btn-default bg-primary" ] [ text "freigabe" ] ]
-                                                ]
-                                            else
-                                                [ label
-                                                , Grid.col [ Col.xs3 ] [ text "frei" ]
-                                                , Grid.col [ Col.xs3 ] [ text "" ]
-                                                , Grid.col [ Col.xs3 ] [ button [ onClick (InputName item "" ""), class "btn btn-default bg-primary" ] [ text "belegen" ] ]
+                                                , Block.text [] [ text "Initialisierung..." ]
                                                 ]
 
-                                        Setting name expiry ->
-                                            [ label
-                                            , Grid.col [ Col.xs3 ] [ input [ placeholder "Name", onChange (InputName item expiry) ] [] ]
-                                            , Grid.col [ Col.xs3 ] [ input [ placeholder "Dauer [Stunden:]Minuten", onChange (InputExpiry item name) ] [] ]
-                                            , Grid.col [ Col.xs3 ] [ button [ onClick (SetItem item name (parseDuration expiry)), class "btn btn-default bg-primary" ] [ text "belegen" ] ]
-                                            ]
-                                    )
-                            )
+                                            _ ->
+                                                (case state of
+                                                    Set name expiry ->
+                                                        if remaining > 0 then
+                                                            [ label
+                                                            , Block.text [] [ text name ]
+                                                            , Block.text [] [ text <| toDurationString <| remaining ]
+
+                                                            -- TODO use Bootstrap's Button everywhere
+                                                            , Block.custom <| button [ onClick (FreeItem item name), class "btn btn-default bg-primary" ] [ text "freigabe" ]
+                                                            ]
+                                                        else
+                                                            [ label
+                                                            , Block.text [] [ text "frei" ]
+                                                            , Block.text [] [ text "" ]
+                                                            , Block.custom <| button [ onClick (InputName item "" ""), class "btn btn-default bg-primary" ] [ text "belegen" ]
+                                                            ]
+
+                                                    Setting name expiry ->
+                                                        [ label
+                                                        , Block.text [] [ input [ id "inputName", placeholder "Name", onChange (InputName item expiry) ] [] ]
+                                                        , Block.text [] [ input [ id "inputDauer", placeholder "Dauer [Stunden:]Minuten", onChange (InputExpiry item name) ] [] ]
+                                                        , Block.custom <| button [ onClick (SetItem item name (parseDuration expiry)), class "btn btn-default bg-primary" ] [ text "belegen" ]
+                                                        ]
+                                                )
+                                        )
+                                    |> Card.view
+                                ]
+                            ]
                 )
                 model.items
             )
