@@ -37,12 +37,14 @@ type alias Id =
 type Msg
     = WsMessageIn String
     | SetItem Item Name Time
-    | InputName Item String Id Name
-    | InputExpiry Item Name Id String
+    | InputName Item String Name
+    | InputExpiry Item Name String
     | FreeItem Item Name
     | AllItems (Result Http.Error (List Toggle))
     | Tick Time
     | WindowFocus String
+    | FocusInputName Item
+    | FocusInputExpiry
     | FocusResult (Result Dom.Error ())
 
 
@@ -58,12 +60,14 @@ type alias WsMsg =
 
 type WsMsgData
     = JoinMsg String
+    | BeingSetMsg Item
     | SetMsg Toggle
     | AllItemsMsg (List Toggle)
 
 
 type ItemState
     = Set Name Time
+    | BeingSet
     | Setting Name String
 
 
@@ -122,6 +126,12 @@ encodeWsMsg wsMsgData =
                 , ( "data", ENC.string name )
                 ]
 
+        BeingSetMsg item ->
+            ENC.object
+                [ ( "msgType", ENC.string "beingSet" )
+                , ( "data", ENC.string item )
+                ]
+
         SetMsg { item, name, expiry } ->
             ENC.object
                 [ ( "msgType", ENC.string "set" )
@@ -156,6 +166,9 @@ decodeWsMsg =
 
                 "set" ->
                     DEC.field "data" (DEC.map SetMsg decodeToggle)
+
+                "beingSet" ->
+                    DEC.field "data" (DEC.map BeingSetMsg DEC.string)
 
                 _ ->
                     DEC.fail ("I only know how to decode 'join' and 'set', not \"" ++ tag ++ "\"")

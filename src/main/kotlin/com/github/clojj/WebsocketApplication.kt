@@ -30,6 +30,8 @@ class WebsocketHandler(private val storage: Storage) : TextWebSocketHandler() {
         sessionMap -= session
     }
 
+    private val itemMap = ConcurrentHashMap<String, Boolean>()
+
     public override fun handleTextMessage(session: WebSocketSession, message: TextMessage?) {
         println("Thread ${Thread.currentThread().id} session $session sessionMap ${System.identityHashCode(sessionMap)}")
 
@@ -37,11 +39,19 @@ class WebsocketHandler(private val storage: Storage) : TextWebSocketHandler() {
         val data = json.get("data")
         val text = data.asText()
         when (json.get("msgType").asText()) {
+            "beingSet" -> {
+                itemMap.getOrPut(text, {true})
+
+                broadcastToOthers(session, WsMsg("beingSet", text))
+            }
+
             "set" -> {
+                val item = data.get("item").asText()
+                itemMap.getOrPut(item, {false})
+
                 val name = data.get("name").asText()
                 sessionMap.getOrPut(session, { User(name) })
 
-                val item = data.get("item").asText()
                 var expiry = data.get("expiry").asLong()
                 val toggle: Toggle
                 if (expiry != 0L) {
@@ -55,6 +65,7 @@ class WebsocketHandler(private val storage: Storage) : TextWebSocketHandler() {
             "join" -> {
                 val user = User(text)
                 sessionMap.getOrPut(session, { user })
+//                TODO also send itemMap state
                 session.sendMessage(TextMessage(objectMapper.writeValueAsString(WsMsg("allItems", storage.allItems()))))
             }
         }

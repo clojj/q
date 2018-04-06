@@ -62,6 +62,11 @@ joining name =
     encode 2 (encodeWsMsg (JoinMsg name))
 
 
+beingSet : String -> String
+beingSet item =
+    encode 2 (encodeWsMsg (BeingSetMsg item))
+
+
 setting : String -> String -> Time -> String
 setting item name expiry =
     let
@@ -97,6 +102,12 @@ setItemState items item newState =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        FocusInputName item ->
+            { model | items = setItemState model.items item (Setting "" "") } ! [ Task.attempt FocusResult (focus "inputName"), wsMessageOut (beingSet item) ]
+
+        FocusInputExpiry ->
+            model ! [ Task.attempt FocusResult (focus "inputExpiry") ]
+
         FocusResult result ->
             case result of
                 Err (Dom.NotFound id) ->
@@ -121,29 +132,11 @@ update msg model =
         SetItem item name expiry ->
             ( model, wsMessageOut (setting item name expiry) )
 
-        InputName item expiry domId name ->
-            let
-                cmd =
-                    case domId of
-                        "" ->
-                            Cmd.none
+        InputName item expiry name ->
+            { model | items = setItemState model.items item (Setting name expiry) } ! [ Cmd.none ]
 
-                        _ ->
-                            Task.attempt FocusResult (focus domId)
-            in
-                { model | items = setItemState model.items item (Setting name expiry) } ! [ cmd ]
-
-        InputExpiry item name domId expiry ->
-            let
-                cmd =
-                    case domId of
-                        "" ->
-                            Cmd.none
-
-                        _ ->
-                            Task.attempt FocusResult (focus domId)
-            in
-                { model | items = setItemState model.items item (Setting name expiry) } ! [ cmd ]
+        InputExpiry item name expiry ->
+            { model | items = setItemState model.items item (Setting name expiry) } ! [ Cmd.none ]
 
         FreeItem item name ->
             ( { model | items = setItemState model.items item (Set name model.time) }, wsMessageOut (setting item "" 0) )
@@ -156,6 +149,16 @@ update msg model =
                 case result of
                     Ok (JoinMsg name) ->
                         ( { model | users = S.insert name model.users }, Cmd.none )
+
+                    Ok (BeingSetMsg item) ->
+                        ( { model
+                            | items =
+                                setItemState model.items
+                                    item
+                                    BeingSet
+                          }
+                        , Cmd.none
+                        )
 
                     Ok (SetMsg toggle) ->
                         ( { model
@@ -211,7 +214,7 @@ view model =
                                     else
                                         0
 
-                                Setting _ _ ->
+                                _ ->
                                     0
 
                         status =
@@ -226,6 +229,9 @@ view model =
                                                 "bg-danger"
                                             else
                                                 "bg-success"
+
+                                        BeingSet ->
+                                            "bg-warning"
 
                                         Setting _ _ ->
                                             "bg-warning"
@@ -245,6 +251,13 @@ view model =
 
                                             _ ->
                                                 (case state of
+                                                    BeingSet ->
+                                                        [ label
+                                                        , Block.text [] [ text "gleich belegt..." ]
+                                                        , Block.text [] [ text "" ]
+                                                        , Block.custom <| button [ onClick (FocusInputName item), class "btn btn-default bg-primary" ] [ text "belegen" ]
+                                                        ]
+
                                                     Set name expiry ->
                                                         if remaining > 0 then
                                                             [ label
@@ -258,13 +271,13 @@ view model =
                                                             [ label
                                                             , Block.text [] [ text "frei" ]
                                                             , Block.text [] [ text "" ]
-                                                            , Block.custom <| button [ onClick (InputName item "" "inputName" ""), class "btn btn-default bg-primary" ] [ text "belegen" ]
+                                                            , Block.custom <| button [ onClick (FocusInputName item), class "btn btn-default bg-primary" ] [ text "belegen" ]
                                                             ]
 
                                                     Setting name expiry ->
                                                         [ label
-                                                        , Block.text [] [ input [ id "inputName", placeholder "Name", onInput (InputName item expiry ""), onEnter (InputExpiry item name "inputDauer" expiry) ] [] ]
-                                                        , Block.text [] [ input [ id "inputDauer", placeholder "Dauer [Stunden:]Minuten", onInput (InputExpiry item name ""), onEnter (SetItem item name (parseDuration expiry)) ] [] ]
+                                                        , Block.text [] [ input [ id "inputName", placeholder "Name", onInput (InputName item expiry), onEnter FocusInputExpiry ] [] ]
+                                                        , Block.text [] [ input [ id "inputExpiry", placeholder "Dauer [Stunden:]Minuten", onInput (InputExpiry item name), onEnter (SetItem item name (parseDuration expiry)) ] [] ]
                                                         , Block.custom <| button [ onClick (SetItem item name (parseDuration expiry)), class "btn btn-default bg-primary" ] [ text "belegen" ]
                                                         ]
                                                 )
