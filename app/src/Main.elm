@@ -170,8 +170,10 @@ update msg model =
                         , Cmd.none
                         )
 
-                    Ok (AllItemsMsg theItems) ->
-                        ( { model | items = toStateList theItems }, Cmd.none )
+                    Ok (AllItemsMsg totalState) ->
+                        let theItems = toStateList totalState.items
+                        in
+                            ( { model | items = theItems }, Cmd.none )
 
                     Err err ->
                         ( { model | error = Just err }, Cmd.none )

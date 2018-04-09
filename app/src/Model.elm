@@ -57,12 +57,17 @@ type alias WsMsg =
     , data : WsMsgData
     }
 
+type alias TotalState =
+    { beingSetList : List Bool
+    , items : List Toggle
+    }
+
 
 type WsMsgData
     = JoinMsg String
     | BeingSetMsg Item
     | SetMsg Toggle
-    | AllItemsMsg (List Toggle)
+    | AllItemsMsg TotalState
 
 
 type ItemState
@@ -162,7 +167,7 @@ decodeWsMsg =
                     DEC.field "data" (DEC.map JoinMsg DEC.string)
 
                 "allItems" ->
-                    DEC.field "data" (DEC.map AllItemsMsg itemsDecoder)
+                    DEC.field "data" (DEC.map AllItemsMsg totalStateDecoder)
 
                 "set" ->
                     DEC.field "data" (DEC.map SetMsg decodeToggle)
@@ -179,6 +184,12 @@ decodeWsMsg =
 
 -------------------------------------------------------------------------
 
+
+totalStateDecoder : DEC.Decoder TotalState
+totalStateDecoder =
+    DECP.decode TotalState
+        |> DECP.required "beingSetList" (DEC.list DEC.bool)
+        |> DECP.required "items" (DEC.list decodeToggle)
 
 itemsDecoder : DEC.Decoder (List Toggle)
 itemsDecoder =
